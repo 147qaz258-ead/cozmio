@@ -97,7 +97,7 @@ function DebugBugProofContent() {
           <Container>
             <div className="grid gap-10 xl:grid-cols-[0.92fr_1.08fr] xl:items-end">
               <div className="max-w-[40rem]">
-                <span className="section-kicker">Proof Lane</span>
+                <span className="section-kicker">验证演示</span>
                 <h1 className="mt-6 text-[clamp(2.7rem,5vw,4.8rem)] font-semibold leading-[0.98] text-primary-text">
                   一次调试现场，
                   <span className="mt-3 block text-mist-blue">

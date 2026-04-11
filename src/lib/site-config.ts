@@ -32,7 +32,7 @@ export const footerGroups = [
     links: [
       { label: "Home", href: "/" },
       { label: "Demo Hub", href: "/demo" },
-      { label: "Cozmio Atlas", href: "/progress" },
+      { label: "Pulseclaw", href: "/progress" },
       { label: "验证演示", href: "/demo/debug-bug" },
     ],
   },
