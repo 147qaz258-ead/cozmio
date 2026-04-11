@@ -10,8 +10,9 @@ export function generateStaticParams() {
   return getAllPosts().map((post) => ({ slug: post.slug }));
 }
 
-export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
-  const post = getPostBySlug(params.slug);
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const post = getPostBySlug(slug);
 
   if (!post) {
     return { title: "Blog" };
@@ -21,11 +22,11 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
     title: post.title,
     description: post.summary,
     alternates: {
-      canonical: `https://cozmio.net/blog/${params.slug}`,
+      canonical: `https://cozmio.net/blog/${slug}`,
     },
     openGraph: {
       type: "article",
-      url: `https://cozmio.net/blog/${params.slug}`,
+      url: `https://cozmio.net/blog/${slug}`,
       publishedTime: post.publishedAt,
       modifiedTime: post.publishedAt,
       tags: post.tags,
@@ -36,8 +37,9 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
   };
 }
 
-export default function BlogPostPage({ params }: { params: { slug: string } }) {
-  const post = getPostBySlug(params.slug);
+export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const post = getPostBySlug(slug);
 
   if (!post) {
     notFound();
