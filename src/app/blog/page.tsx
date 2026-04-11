@@ -5,9 +5,9 @@ import { BlogFooter } from "@/components/blog/BlogFooter";
 import { getAllVolumes, getBookStats } from "@/lib/book";
 
 export const metadata: Metadata = {
-  title: "OpenClaw Book — AI Agent 框架实践指南",
+  title: "Writing — Pulseclaw 产品思考与更新",
   description:
-    "从零开始掌握 AI Agent 框架。5 卷 25 章，带你深入理解 OpenClaw 的架构、通道连接、Agent 实践与高级配置。",
+    "Pulseclaw 的产品思考：上下文捕获、证据驱动的 AI 帮助，以及桌面端工具的设计记录。",
   alternates: { canonical: "/blog" },
 };
 
