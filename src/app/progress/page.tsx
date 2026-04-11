@@ -4,115 +4,45 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Container } from "@/components/layout/Container";
 import { Button } from "@/components/ui/button";
-import { getProgressPageData, type DailyProgressDay } from "@/lib/progress-data";
+import { getProgressPageData } from "@/lib/progress-data";
 import { siteConfig } from "@/lib/site-config";
 
 export const metadata: Metadata = {
   title: "项目进展",
   description:
     "每天查看 Pulseclaw 的真实推进：任务主线、git 构建节奏、代码增量与验证状态。",
-  alternates: {
-    canonical: "/progress",
-  },
+  alternates: { canonical: "/progress" },
 };
 
-function formatNumber(value: number) {
+function formatNum(value: number) {
   return new Intl.NumberFormat("zh-CN").format(value);
 }
 
-function formatPercent(value: number) {
-  return `${Math.round(value * 100)}%`;
+function formatDate(date: string) {
+  const d = new Date(`${date}T00:00:00`);
+  return new Intl.DateTimeFormat("zh-CN", { month: "short", day: "numeric" }).format(d);
 }
 
-function formatSigned(value: number) {
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${formatNumber(value)}`;
-}
-
-function formatDateLabel(date: string) {
-  const asDate = new Date(`${date}T00:00:00`);
-  return new Intl.DateTimeFormat("zh-CN", {
-    month: "short",
-    day: "numeric",
-    weekday: "short",
-  }).format(asDate);
-}
-
-function formatGeneratedAt(value: string) {
-  const asDate = new Date(value);
-  return new Intl.DateTimeFormat("zh-CN", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(asDate);
-}
-
-function statusLabel(status: string, verificationStatus?: string) {
-  if (status === "passed") return "verified";
-  if (status === "in_progress") return "running";
-  if (status === "implemented_unverified") return "implemented";
-  if (status === "blocked" || verificationStatus === "blocked") return "blocked";
-  if (status === "failed" || verificationStatus === "failed") return "attention";
-  return "queued";
-}
-
-function statusTone(status: string, verificationStatus?: string) {
-  if (status === "passed") return "border-sage-green/22 bg-sage-green/10 text-sage-green";
-  if (status === "in_progress")
-    return "border-mist-blue/24 bg-mist-blue/10 text-mist-blue";
-  if (status === "implemented_unverified")
-    return "border-digital-lavender/26 bg-digital-lavender/10 text-digital-lavender";
-  if (status === "blocked" || verificationStatus === "blocked")
-    return "border-primary-text/12 bg-primary-text/8 text-primary-text";
-  if (status === "failed" || verificationStatus === "failed")
-    return "border-amber-500/28 bg-amber-500/10 text-amber-700";
-  return "border-black/8 bg-white text-secondary-text";
-}
-
-function renderDailyTree(day: DailyProgressDay, isLast: boolean) {
-  const branch = isLast ? "└─" : "├─";
-  const childPrefix = isLast ? "   " : "│  ";
-
-  return (
-    <div key={day.date} className="font-mono text-[12px] leading-6 text-primary-text">
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="text-secondary-text">{branch}</span>
-        <span className="font-semibold text-primary-text">{day.date}</span>
-        <span className="rounded-full border border-black/8 bg-white/80 px-2 py-0.5 text-[11px] text-secondary-text">
-          {formatDateLabel(day.date)}
-        </span>
-        <span className="text-mist-blue">+{formatNumber(day.additions)}</span>
-        <span className="text-primary-text/60">-{formatNumber(day.deletions)}</span>
-        <span className="text-secondary-text">{formatNumber(day.commitCount)} commits</span>
-      </div>
-
-      {day.commits.map((commit) => (
-        <div key={commit.sha} className="flex flex-wrap items-center gap-3">
-          <span className="text-secondary-text">{childPrefix}├─</span>
-          <span className="text-primary-text/84">{commit.subject}</span>
-          <span className="text-secondary-text/72">{commit.sha.slice(0, 7)}</span>
-          <span className="text-mist-blue">+{formatNumber(commit.additions)}</span>
-          <span className="text-primary-text/60">-{formatNumber(commit.deletions)}</span>
-        </div>
-      ))}
-
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="text-secondary-text">{childPrefix}└─</span>
-        <span className="text-secondary-text">areas</span>
-        <span className="text-primary-text/80">{day.areas.join(" · ") || "repo-wide"}</span>
-      </div>
-    </div>
-  );
+function barHeight(net: number, maxNet: number) {
+  if (maxNet === 0) return 4;
+  return Math.max(4, Math.round((Math.abs(net) / maxNet) * 120));
 }
 
 export default function ProgressPage() {
-  const data = getProgressPageData();
+  const d = getProgressPageData();
+
+  const maxNet = Math.max(...d.dailyProgress.map((day) => Math.abs(day.netLines)), 1);
+
+  const totalAdditions = d.dailyProgress.reduce((s, day) => s + day.additions, 0);
+  const totalDeletions = d.dailyProgress.reduce((s, day) => s + day.deletions, 0);
+
+  const recentDays = d.dailyProgress.slice(0, 7);
 
   return (
     <div className="flex min-h-screen flex-col bg-warm-white">
       <Header />
       <main className="flex-1">
+        {/* Hero */}
         <section className="relative overflow-hidden pb-12 pt-12 sm:pb-16 lg:pb-18 lg:pt-18">
           <div className="pointer-events-none absolute inset-0">
             <div className="page-grid absolute inset-0 opacity-[0.2]" />
@@ -126,16 +56,15 @@ export default function ProgressPage() {
               <div className="max-w-[42rem]">
                 <span className="section-kicker">Pulseclaw</span>
                 <h1 className="mt-6 text-[clamp(2.8rem,6vw,5.2rem)] font-semibold leading-[0.96] text-primary-text">
-                  把每天的推进，
-                  <span className="mt-3 block text-mist-blue">变成一页能看见的构建轨迹。</span>
+                  迭代速度，
+                  <span className="mt-3 block text-mist-blue">
+                    用代码说话。
+                  </span>
                 </h1>
                 <p className="mt-6 max-w-[38rem] text-[1.05rem] leading-8 text-secondary-text sm:text-[1.12rem]">
-                  这不是一张只有提交点的活跃图。{data.codename} 同时读取任务主线和
-                  git 构建历史，让你看到今天推进了什么、改了哪些区域、加了多少代码，
-                  以及主线到底走到了哪。
+                  基于真实 git 构建历史生成。每个数字都来自代码增删，不来自感觉。
                 </p>
-
-                <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <div className="mt-8 flex gap-3">
                   <a href={siteConfig.links.github} target="_blank" rel="noreferrer" className="inline-flex">
                     <Button
                       size="lg"
@@ -156,266 +85,162 @@ export default function ProgressPage() {
                 </div>
               </div>
 
-              <div className="surface-panel-strong grid gap-4 rounded-[2rem] p-5 sm:grid-cols-2 sm:p-6">
-                <div className="rounded-[1.4rem] border border-black/6 bg-white/80 p-4">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-text/68">
-                    主线完成度
-                  </div>
-                  <div className="mt-3 text-[2.4rem] font-semibold text-primary-text">
-                    {formatPercent(data.completionRate)}
-                  </div>
-                  <div className="mt-2 text-sm text-secondary-text">
-                    {formatNumber(data.passedTasks)} / {formatNumber(data.totalTasks)} tasks verified
-                  </div>
-                </div>
-
-                <div className="rounded-[1.4rem] border border-black/6 bg-white/80 p-4">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-text/68">
-                    最近 7 天提交
-                  </div>
-                  <div className="mt-3 text-[2.4rem] font-semibold text-primary-text">
-                    {formatNumber(data.recentCommitCount)}
-                  </div>
-                  <div className="mt-2 text-sm text-secondary-text">
-                    +{formatNumber(data.recentAdditions)} / -{formatNumber(data.recentDeletions)} lines
-                  </div>
-                </div>
-
-                <div className="rounded-[1.4rem] border border-black/6 bg-white/80 p-4">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-text/68">
-                    当前活跃面
-                  </div>
-                  <div className="mt-3 text-[2.4rem] font-semibold text-primary-text">
-                    {formatNumber(data.activeTasks)}
-                  </div>
-                  <div className="mt-2 text-sm text-secondary-text">
-                    包含 implemented 与 in-progress
-                  </div>
-                </div>
-
-                <div className="rounded-[1.4rem] border border-black/6 bg-white/80 p-4">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-text/68">
-                    最后生成
-                  </div>
-                  <div className="mt-3 text-[1.6rem] font-semibold text-primary-text">
-                    {formatGeneratedAt(data.generatedAt)}
-                  </div>
-                  <div className="mt-2 text-sm text-secondary-text">
-                    tasklist {data.tasklistVersion}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Container>
-        </section>
-
-        <section className="pb-12 sm:pb-16">
-          <Container>
-            <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
-              <div className="surface-panel rounded-[1.9rem] p-5 sm:p-6">
-                <div className="flex flex-wrap items-start justify-between gap-4 border-b border-black/6 pb-4">
-                  <div>
+              {/* Top-level stats */}
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                {[
+                  {
+                    label: "近 7 天新增代码",
+                    value: `+${formatNum(d.recentAdditions)}`,
+                    unit: "行",
+                    accent: "text-mist-blue",
+                  },
+                  {
+                    label: "近 7 天删除代码",
+                    value: `-${formatNum(d.recentDeletions)}`,
+                    unit: "行",
+                    accent: "text-secondary-text",
+                  },
+                  {
+                    label: "近 7 天提交",
+                    value: formatNum(d.recentCommitCount),
+                    unit: "次",
+                    accent: "text-primary-text",
+                  },
+                  {
+                    label: "21 天净增",
+                    value: `${d.recentAdditions - d.recentDeletions > 0 ? "+" : ""}${formatNum(d.recentAdditions - d.recentDeletions)}`,
+                    unit: "行",
+                    accent: d.recentAdditions - d.recentDeletions >= 0 ? "text-sage-green" : "text-amber-600",
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className="surface-panel rounded-[1.4rem] border border-black/6 bg-white/80 p-4"
+                  >
                     <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-text/68">
-                      Daily Build Tree
+                      {item.label}
                     </div>
-                    <h2 className="mt-2 text-[1.7rem] font-semibold text-primary-text">
-                      每天加了什么，改了哪里，多了多少代码
-                    </h2>
-                    <p className="mt-3 max-w-[38rem] text-sm leading-7 text-secondary-text">
-                      这里直接基于 git 构建历史生成。每个日期节点都会显示代码增减、
-                      提交主题和当天最活跃的改动区域。
-                    </p>
-                  </div>
-                  <div className="rounded-[1.25rem] border border-black/6 bg-white/80 px-4 py-3 text-right">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-secondary-text/68">
-                      last 21 days
-                    </div>
-                    <div className="mt-1 text-[1.35rem] font-semibold text-primary-text">
-                      {formatNumber(data.dailyProgress.length)} day nodes
+                    <div className={`mt-1 text-[2rem] font-semibold ${item.accent}`}>
+                      {item.value}
+                      <span className="ml-1 text-[1rem] font-normal text-secondary-text">{item.unit}</span>
                     </div>
                   </div>
-                </div>
-
-                <div className="mt-5 rounded-[1.6rem] border border-black/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(246,242,236,0.95))] p-4 sm:p-5">
-                  <div className="font-mono text-[12px] leading-6 text-primary-text">
-                    <div className="font-semibold text-primary-text">pulseclaw/</div>
-                    <div className="mt-3 space-y-2">
-                      {data.dailyProgress.map((day, index) =>
-                        renderDailyTree(day, index === data.dailyProgress.length - 1),
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <div className="surface-panel rounded-[1.9rem] p-5 sm:p-6">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-text/68">
-                    Current Frontier
-                  </div>
-                  <h2 className="mt-2 text-[1.55rem] font-semibold text-primary-text">
-                    当前主线正在碰哪几块
-                  </h2>
-                  <div className="mt-5 space-y-3">
-                    {data.currentFrontier.map((task) => (
-                      <div
-                        key={task.id}
-                        className="rounded-[1.35rem] border border-black/6 bg-white/80 p-4"
-                      >
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-mono text-[12px] font-semibold text-primary-text">
-                            {task.id}
-                          </span>
-                          <span
-                            className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${statusTone(
-                              task.status,
-                              task.verification_status,
-                            )}`}
-                          >
-                            {statusLabel(task.status, task.verification_status)}
-                          </span>
-                        </div>
-                        <div className="mt-2 text-sm font-semibold text-primary-text">
-                          {task.title}
-                        </div>
-                        {task.notes ? (
-                          <div className="mt-2 text-sm leading-7 text-secondary-text">
-                            {task.notes.split(/\r?\n/)[0]}
-                          </div>
-                        ) : null}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="surface-panel rounded-[1.9rem] p-5 sm:p-6">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-text/68">
-                    Repo Pulse
-                  </div>
-                  <h2 className="mt-2 text-[1.55rem] font-semibold text-primary-text">
-                    这段时间的推进节奏
-                  </h2>
-                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                    {[
-                      {
-                        label: "blocked tasks",
-                        value: formatNumber(data.blockedTasks),
-                        tone: "text-primary-text",
-                      },
-                      {
-                        label: "net lines / 7d",
-                        value: formatSigned(data.recentAdditions - data.recentDeletions),
-                        tone: "text-mist-blue",
-                      },
-                      {
-                        label: "latest ship day",
-                        value: data.dailyProgress[0]?.date ?? "n/a",
-                        tone: "text-primary-text",
-                      },
-                      {
-                        label: "brand",
-                        value: data.codename,
-                        tone: "text-digital-lavender",
-                      },
-                    ].map((item) => (
-                      <div
-                        key={item.label}
-                        className="rounded-[1.35rem] border border-black/6 bg-white/80 p-4"
-                      >
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-secondary-text/68">
-                          {item.label}
-                        </div>
-                        <div className={`mt-2 text-[1.35rem] font-semibold ${item.tone}`}>
-                          {item.value}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           </Container>
         </section>
 
-        <section className="pb-18 sm:pb-24">
+        {/* 21-day bar chart */}
+        <section className="pb-10 sm:pb-14">
           <Container>
-            <div className="surface-panel rounded-[1.95rem] p-5 sm:p-6">
-              <div className="flex flex-wrap items-start justify-between gap-4 border-b border-black/6 pb-4">
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-text/68">
-                    Task Tree
-                  </div>
-                  <h2 className="mt-2 text-[1.7rem] font-semibold text-primary-text">
-                    主线任务树，不再靠感觉猜项目走到了哪
-                  </h2>
-                  <p className="mt-3 max-w-[44rem] text-sm leading-7 text-secondary-text">
-                    这棵树直接读取任务表当前状态。lane 是主干，任务是分支；
-                    每个节点都标出它是 verified、implemented、blocked 还是 queued。
-                  </p>
+            <div className="surface-panel rounded-[1.9rem] p-5 sm:p-6">
+              <div className="mb-5 border-b border-black/6 pb-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-text/68">
+                  21 天提交节奏
                 </div>
-                <div className="rounded-[1.25rem] border border-black/6 bg-white/80 px-4 py-3 text-right">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-secondary-text/68">
-                    verified now
-                  </div>
-                  <div className="mt-1 text-[1.35rem] font-semibold text-primary-text">
-                    {formatNumber(data.passedTasks)} tasks
-                  </div>
-                </div>
+                <h2 className="mt-2 text-[1.6rem] font-semibold text-primary-text">
+                  每天的代码增删，一目了然
+                </h2>
               </div>
 
-              <div className="mt-5 rounded-[1.6rem] border border-black/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(246,242,236,0.95))] p-4 sm:p-5">
-                <div className="space-y-5 font-mono text-[12px] leading-6 text-primary-text">
-                  <div className="font-semibold text-primary-text">pulseclaw/</div>
-                  {data.laneSnapshots.map((lane, laneIndex) => {
-                    const lanePrefix = laneIndex === data.laneSnapshots.length - 1 ? "└─" : "├─";
-                    const laneChildPrefix =
-                      laneIndex === data.laneSnapshots.length - 1 ? "   " : "│  ";
+              <div className="flex items-end gap-1.5 overflow-x-auto pb-2">
+                {d.dailyProgress.map((day) => {
+                  const pos = day.netLines > 0 ? barHeight(day.netLines, maxNet) : 0;
+                  const neg = day.netLines < 0 ? barHeight(day.netLines, maxNet) : 0;
+                  const isToday =
+                    day.date === d.dailyProgress[0]?.date;
 
-                    return (
-                      <div key={lane.id}>
-                        <div className="flex flex-wrap items-center gap-3">
-                          <span className="text-secondary-text">{lanePrefix}</span>
-                          <span className="font-semibold text-primary-text">
-                            {lane.id} · {lane.name}
-                          </span>
-                          <span className="rounded-full border border-black/8 bg-white/80 px-2 py-0.5 text-[11px] text-secondary-text">
-                            {lane.passed}/{lane.total} verified
-                          </span>
-                        </div>
-                        <div className="ml-6 mt-1 text-sm leading-7 text-secondary-text">
-                          {lane.description}
-                        </div>
-
-                        <div className="mt-2 space-y-1">
-                          {lane.tasks.map((task, taskIndex) => {
-                            const taskPrefix =
-                              taskIndex === lane.tasks.length - 1 ? "└─" : "├─";
-                            return (
-                              <div key={task.id} className="flex flex-wrap items-center gap-3">
-                                <span className="text-secondary-text">
-                                  {laneChildPrefix}
-                                  {taskPrefix}
-                                </span>
-                                <span className="font-semibold text-primary-text">
-                                  {task.id}
-                                </span>
-                                <span
-                                  className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] ${statusTone(
-                                    task.status,
-                                    task.verification_status,
-                                  )}`}
-                                >
-                                  {statusLabel(task.status, task.verification_status)}
-                                </span>
-                                <span className="text-primary-text/84">{task.title}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
+                  return (
+                    <div
+                      key={day.date}
+                      className="flex flex-1 flex-col items-center gap-1"
+                      title={`${day.date}  +${day.additions} -${day.deletions}  ${day.commitCount} commits`}
+                    >
+                      <div className="flex w-full flex-col items-center justify-end" style={{ height: 120 }}>
+                        {pos > 0 && (
+                          <div
+                            className="w-full rounded-t-sm bg-mist-blue/70"
+                            style={{ height: pos }}
+                          />
+                        )}
                       </div>
-                    );
-                  })}
+                      <div className="flex w-full flex-col items-center justify-start" style={{ height: 60 }}>
+                        {neg > 0 && (
+                          <div
+                            className="w-full rounded-b-sm bg-amber-500/60"
+                            style={{ height: neg }}
+                          />
+                        )}
+                      </div>
+                      <div
+                        className={`w-full text-center text-[9px] font-medium ${isToday ? "text-mist-blue" : "text-secondary-text/50"}`}
+                      >
+                        {formatDate(day.date)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 flex items-center gap-5 text-[11px] text-secondary-text">
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block h-2 w-4 rounded-sm bg-mist-blue/70" />
+                  新增
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block h-2 w-4 rounded-sm bg-amber-500/60" />
+                  删除
+                </span>
+              </div>
+            </div>
+          </Container>
+        </section>
+
+        {/* Recent commits */}
+        <section className="pb-16 sm:pb-20">
+          <Container>
+            <div className="surface-panel rounded-[1.9rem] p-5 sm:p-6">
+              <div className="mb-5 border-b border-black/6 pb-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-text/68">
+                  最新提交
                 </div>
+                <h2 className="mt-2 text-[1.6rem] font-semibold text-primary-text">
+                  近 7 天推进了什么
+                </h2>
+              </div>
+
+              <div className="space-y-3">
+                {recentDays.flatMap((day) =>
+                  day.commits.map((commit, ci) => (
+                    <div
+                      key={`${day.date}-${ci}`}
+                      className="flex flex-wrap items-start gap-3 rounded-[1.2rem] border border-black/6 bg-white/80 px-4 py-3"
+                    >
+                      <div className="flex min-w-0 flex-1 gap-3">
+                        <span className="shrink-0 rounded-full border border-black/8 bg-white/90 px-2.5 py-0.5 text-[10px] font-medium text-secondary-text">
+                          {formatDate(day.date)}
+                        </span>
+                        <span className="min-w-0 flex-1 text-sm font-medium text-primary-text">
+                          {commit.subject}
+                        </span>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-3 text-[11px]">
+                        <span className="font-mono text-mist-blue">+{formatNum(commit.additions)}</span>
+                        <span className="font-mono text-secondary-text/60">-{formatNum(commit.deletions)}</span>
+                        <span className="rounded-full border border-black/8 bg-white/90 px-2 py-0.5 text-[10px] text-secondary-text">
+                          {commit.filesChanged}f
+                        </span>
+                      </div>
+                    </div>
+                  )),
+                )}
+
+                {recentDays.length === 0 && (
+                  <div className="py-8 text-center text-sm text-secondary-text">
+                    暂无提交记录
+                  </div>
+                )}
               </div>
             </div>
           </Container>
