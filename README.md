@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Pulseclaw 官网
 
-## Getting Started
+> 先保留你刚经历过的上下文，再让 AI 开口。
 
-First, run the development server:
+[pulseclaw.cozmio.net](https://pulseclaw.cozmio.net) 是 Pulseclaw 的正式官网、公开演示与产品思考入口。
+
+## 产品定位
+
+Pulseclaw 是桌面端工具——自动捕获工作上下文，在证据支撑下提供 AI 帮助。
+
+传统的 AI 交互要求用户先把一切翻译成 prompt。Pulseclaw 的思路不同：**先把真实的工作痕迹接住，再在证据边界内给出候选帮助**。
+
+核心特性：
+- **上下文先于提示词** — 工作现场的原始片段被直接接入系统，不需要用户主动描述
+- **证据支撑** — 每条帮助都可以回指到原始证据链，可验证、可重新组织
+- **本地优先** — 上下文捕获优先停留在本地，系统靠近现场本身而不是先变成远端摘要
+- **候选帮助，有边界** — 帮助以候选形式出现，系统不声称理解全部目标
+
+## 技术栈
+
+- **Next.js 16** (App Router, 静态导出)
+- **TypeScript**
+- **Tailwind CSS** + 自定义设计系统
+- **Cloudflare Pages** (部署)
+
+## 快速上手
 
 ```bash
+git clone https://github.com/147qaz258-ead/cozmio.git
+cd cozmio
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+访问 [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 目录结构
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+src/
+├── app/                    # Next.js App Router 页面
+│   ├── page.tsx            # 首页
+│   ├── demo/               # 演示中心
+│   ├── blog/               # 产品思考
+│   ├── progress/           # 迭代进度（git 构建历史）
+│   └── about/              # 关于
+├── components/             # React 组件
+│   ├── layout/             # Header / Footer
+│   └── demo/               # Demo 可视化组件
+└── lib/                    # 数据层和工具函数
+    ├── blog.ts              # 博客内容
+    ├── progress-data.ts     # Git 构建历史读取
+    └── site-config.ts      # 站点配置
+```
 
-## Learn More
+## 部署
 
-To learn more about Next.js, take a look at the following resources:
+push 到 `master` 分支后，GitHub Actions 自动构建并部署到 Cloudflare Pages。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+手动部署：
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run deploy:site        # 构建 + 部署
+npm run deploy:site:fast   # 跳过 lint，直接部署
+```
 
-## Deploy on Vercel
+## 相关链接
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- 产品官网：https://pulseclaw.cozmio.net
+- GitHub：https://github.com/147qaz258-ead/pulseclaw（桌面端产品仓库）
