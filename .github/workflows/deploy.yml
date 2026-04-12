@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - master
+    paths-ignore:
+      - "public/data/**"
+      - ".github/workflows/update-progress.yml"
   workflow_dispatch:
 
 jobs:

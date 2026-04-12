@@ -1,0 +1,614 @@
+{
+  "generatedAt": "2026-04-12T17:39:48.785Z",
+  "dailyProgress": [
+    {
+      "date": "2026-04-13",
+      "commitCount": 1,
+      "additions": 1,
+      "deletions": 3,
+      "filesChanged": 1,
+      "netLines": -2,
+      "highlights": [
+        "fix(deploy): remove --branch flag incompatible with API token auth"
+      ],
+      "areas": [
+        "scripts/deploy-pages.mjs"
+      ],
+      "commits": [
+        {
+          "sha": "ee0fb890faf09296657c395d6405ec56b1578c7f",
+          "date": "2026-04-13",
+          "subject": "fix(deploy): remove --branch flag incompatible with API token auth",
+          "additions": 1,
+          "deletions": 3,
+          "filesChanged": 1,
+          "files": [
+            {
+              "path": "scripts/deploy-pages.mjs",
+              "additions": 1,
+              "deletions": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-04-12",
+      "commitCount": 9,
+      "additions": 4753,
+      "deletions": 423,
+      "filesChanged": 49,
+      "netLines": 4330,
+      "highlights": [
+        "fix(ci): use npm install instead of npm ci in GitHub Actions",
+        "feat: add all website source files",
+        "feat: add deploy scripts",
+        "fix: use correct build+deploy command in CI"
+      ],
+      "areas": [
+        "src/components",
+        "src/app",
+        "src/lib",
+        "scripts/deploy-pages.mjs"
+      ],
+      "commits": [
+        {
+          "sha": "a2beb84fe7d3e1e54c84bb2f2461ff2f1f4bc8da",
+          "date": "2026-04-12",
+          "subject": "fix(ci): use npm install instead of npm ci in GitHub Actions",
+          "additions": 1,
+          "deletions": 1,
+          "filesChanged": 1,
+          "files": [
+            {
+              "path": ".github/workflows/deploy.yml",
+              "additions": 1,
+              "deletions": 1
+            }
+          ]
+        },
+        {
+          "sha": "36f814ae1166ba31537f3de9b3ae72a2cd27d3e2",
+          "date": "2026-04-12",
+          "subject": "feat: add all website source files",
+          "additions": 4380,
+          "deletions": 7,
+          "filesChanged": 38,
+          "files": [
+            {
+              "path": ".github/workflows/deploy.yml",
+              "additions": 1,
+              "deletions": 1
+            },
+            {
+              "path": "src/app/book/[volume]/[slug]/page.tsx",
+              "additions": 133,
+              "deletions": 0
+            },
+            {
+              "path": "src/app/contact/page.tsx",
+              "additions": 135,
+              "deletions": 0
+            },
+            {
+              "path": "src/app/globals.css",
+              "additions": 177,
+              "deletions": 6
+            },
+            {
+              "path": "src/app/privacy/page.tsx",
+              "additions": 93,
+              "deletions": 0
+            },
+            {
+              "path": "src/app/robots.ts",
+              "additions": 14,
+              "deletions": 0
+            },
+            {
+              "path": "src/app/terms/page.tsx",
+              "additions": 93,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/CapabilityCards.tsx",
+              "additions": 74,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/ChapterNavigation.tsx",
+              "additions": 51,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/HeroSection.tsx",
+              "additions": 99,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/HomepageTeaser.tsx",
+              "additions": 184,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/HowItWorks.tsx",
+              "additions": 91,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/LiveDemoBlock.tsx",
+              "additions": 295,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/MarkdownRenderer.tsx",
+              "additions": 29,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/TocSidebar.tsx",
+              "additions": 68,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/blog/BlogFooter.tsx",
+              "additions": 66,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/blog/BlogHeader.tsx",
+              "additions": 85,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/demo/ConsumableResults.tsx",
+              "additions": 81,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/demo/GraphView.tsx",
+              "additions": 201,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/demo/InspectorPanel.tsx",
+              "additions": 168,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/demo/MainDemoView.tsx",
+              "additions": 348,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/demo/ModeSwitcher.tsx",
+              "additions": 71,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/demo/ProofStrip.tsx",
+              "additions": 97,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/demo/ReplayControls.tsx",
+              "additions": 208,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/demo/ScenarioCard.tsx",
+              "additions": 101,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/demo/SourceTraceDrawer.tsx",
+              "additions": 67,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/demo/TimelinePanel.tsx",
+              "additions": 134,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/layout/Container.tsx",
+              "additions": 12,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/layout/Footer.tsx",
+              "additions": 62,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/layout/Header.tsx",
+              "additions": 101,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/layout/index.ts",
+              "additions": 3,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/sections/CTASection.tsx",
+              "additions": 88,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/sections/PrivacyNote.tsx",
+              "additions": 22,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/ui/card.tsx",
+              "additions": 103,
+              "deletions": 0
+            },
+            {
+              "path": "src/lib/book.ts",
+              "additions": 242,
+              "deletions": 0
+            },
+            {
+              "path": "src/lib/demo-context.tsx",
+              "additions": 323,
+              "deletions": 0
+            },
+            {
+              "path": "src/lib/demo-data.ts",
+              "additions": 111,
+              "deletions": 0
+            },
+            {
+              "path": "src/lib/graph-data.ts",
+              "additions": 149,
+              "deletions": 0
+            }
+          ]
+        },
+        {
+          "sha": "8472d9bfd4711f5d26925233a778b7c229b7804a",
+          "date": "2026-04-12",
+          "subject": "feat: add deploy scripts",
+          "additions": 93,
+          "deletions": 0,
+          "filesChanged": 1,
+          "files": [
+            {
+              "path": "scripts/deploy-pages.mjs",
+              "additions": 93,
+              "deletions": 0
+            }
+          ]
+        },
+        {
+          "sha": "b84974b2c64f2977b146b12fd31a71d7e0a9e79b",
+          "date": "2026-04-12",
+          "subject": "fix: use correct build+deploy command in CI",
+          "additions": 1,
+          "deletions": 1,
+          "filesChanged": 1,
+          "files": [
+            {
+              "path": ".github/workflows/deploy.yml",
+              "additions": 1,
+              "deletions": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-04-11",
+      "commitCount": 3,
+      "additions": 2815,
+      "deletions": 26,
+      "filesChanged": 18,
+      "netLines": 2789,
+      "highlights": [
+        "fix(web): await params in blog post page (Next.js 15 async params)",
+        "fix(web): remove remaining internal jargon",
+        "feat: SEO optimization — metadata, structured data, sitemap, and copy polish"
+      ],
+      "areas": [
+        "src/app",
+        "src/lib",
+        "src/components",
+        "public/apple-touch-icon.png"
+      ],
+      "commits": [
+        {
+          "sha": "ad6e422bd67505469cd399b2596ac018a5fbb308",
+          "date": "2026-04-11",
+          "subject": "fix(web): await params in blog post page (Next.js 15 async params)",
+          "additions": 380,
+          "deletions": 6,
+          "filesChanged": 2,
+          "files": [
+            {
+              "path": "src/app/blog/[slug]/page.tsx",
+              "additions": 8,
+              "deletions": 6
+            },
+            {
+              "path": "src/lib/progress-data.ts",
+              "additions": 372,
+              "deletions": 0
+            }
+          ]
+        },
+        {
+          "sha": "e705f12e98e92c6737bc724d7b094c2f74e76943",
+          "date": "2026-04-11",
+          "subject": "fix(web): remove remaining internal jargon",
+          "additions": 2,
+          "deletions": 2,
+          "filesChanged": 2,
+          "files": [
+            {
+              "path": "src/app/demo/debug-bug/page.tsx",
+              "additions": 1,
+              "deletions": 1
+            },
+            {
+              "path": "src/lib/site-config.ts",
+              "additions": 1,
+              "deletions": 1
+            }
+          ]
+        },
+        {
+          "sha": "7cd342418408b6eb8283fc94b09c7798cda6f9c1",
+          "date": "2026-04-11",
+          "subject": "feat: SEO optimization — metadata, structured data, sitemap, and copy polish",
+          "additions": 2433,
+          "deletions": 18,
+          "filesChanged": 14,
+          "files": [
+            {
+              "path": "public/apple-touch-icon.png",
+              "additions": 0,
+              "deletions": 0
+            },
+            {
+              "path": "public/og-image.png",
+              "additions": 0,
+              "deletions": 0
+            },
+            {
+              "path": "src/app/about/page.tsx",
+              "additions": 181,
+              "deletions": 0
+            },
+            {
+              "path": "src/app/blog/[slug]/page.tsx",
+              "additions": 142,
+              "deletions": 0
+            },
+            {
+              "path": "src/app/blog/page.tsx",
+              "additions": 166,
+              "deletions": 0
+            },
+            {
+              "path": "src/app/demo/debug-bug/page.tsx",
+              "additions": 265,
+              "deletions": 0
+            },
+            {
+              "path": "src/app/demo/page.tsx",
+              "additions": 405,
+              "deletions": 0
+            },
+            {
+              "path": "src/app/layout.tsx",
+              "additions": 71,
+              "deletions": 18
+            },
+            {
+              "path": "src/app/progress/page.tsx",
+              "additions": 427,
+              "deletions": 0
+            },
+            {
+              "path": "src/app/sitemap.ts",
+              "additions": 26,
+              "deletions": 0
+            },
+            {
+              "path": "src/components/demo/ContextFlowVisual.tsx",
+              "additions": 347,
+              "deletions": 0
+            },
+            {
+              "path": "src/lib/blog.ts",
+              "additions": 192,
+              "deletions": 0
+            },
+            {
+              "path": "src/lib/demo-script.ts",
+              "additions": 144,
+              "deletions": 0
+            },
+            {
+              "path": "src/lib/site-config.ts",
+              "additions": 67,
+              "deletions": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-04-03",
+      "commitCount": 2,
+      "additions": 10382,
+      "deletions": 119,
+      "filesChanged": 25,
+      "netLines": 10263,
+      "highlights": [
+        "feat: initial commit",
+        "Initial commit from Create Next App"
+      ],
+      "areas": [
+        "package-lock.json",
+        "src/app",
+        "src/components",
+        ".gitignore"
+      ],
+      "commits": [
+        {
+          "sha": "086633ea041f8ac2829880dfef1fa03c1447fb95",
+          "date": "2026-04-03",
+          "subject": "feat: initial commit",
+          "additions": 3506,
+          "deletions": 119,
+          "filesChanged": 6,
+          "files": [
+            {
+              "path": "components.json",
+              "additions": 25,
+              "deletions": 0
+            },
+            {
+              "path": "package-lock.json",
+              "additions": 3289,
+              "deletions": 104
+            },
+            {
+              "path": "package.json",
+              "additions": 8,
+              "deletions": 1
+            },
+            {
+              "path": "src/app/globals.css",
+              "additions": 118,
+              "deletions": 14
+            },
+            {
+              "path": "src/components/ui/button.tsx",
+              "additions": 60,
+              "deletions": 0
+            },
+            {
+              "path": "src/lib/utils.ts",
+              "additions": 6,
+              "deletions": 0
+            }
+          ]
+        },
+        {
+          "sha": "b581527d019a61ab953c614e81939e0379ac8d9e",
+          "date": "2026-04-03",
+          "subject": "Initial commit from Create Next App",
+          "additions": 6876,
+          "deletions": 0,
+          "filesChanged": 19,
+          "files": [
+            {
+              "path": ".gitignore",
+              "additions": 41,
+              "deletions": 0
+            },
+            {
+              "path": "AGENTS.md",
+              "additions": 5,
+              "deletions": 0
+            },
+            {
+              "path": "CLAUDE.md",
+              "additions": 1,
+              "deletions": 0
+            },
+            {
+              "path": "README.md",
+              "additions": 36,
+              "deletions": 0
+            },
+            {
+              "path": "eslint.config.mjs",
+              "additions": 18,
+              "deletions": 0
+            },
+            {
+              "path": "next.config.ts",
+              "additions": 7,
+              "deletions": 0
+            },
+            {
+              "path": "package-lock.json",
+              "additions": 6572,
+              "deletions": 0
+            },
+            {
+              "path": "package.json",
+              "additions": 26,
+              "deletions": 0
+            },
+            {
+              "path": "postcss.config.mjs",
+              "additions": 7,
+              "deletions": 0
+            },
+            {
+              "path": "public/file.svg",
+              "additions": 1,
+              "deletions": 0
+            },
+            {
+              "path": "public/globe.svg",
+              "additions": 1,
+              "deletions": 0
+            },
+            {
+              "path": "public/next.svg",
+              "additions": 1,
+              "deletions": 0
+            },
+            {
+              "path": "public/vercel.svg",
+              "additions": 1,
+              "deletions": 0
+            },
+            {
+              "path": "public/window.svg",
+              "additions": 1,
+              "deletions": 0
+            },
+            {
+              "path": "src/app/favicon.ico",
+              "additions": 0,
+              "deletions": 0
+            },
+            {
+              "path": "src/app/globals.css",
+              "additions": 26,
+              "deletions": 0
+            },
+            {
+              "path": "src/app/layout.tsx",
+              "additions": 33,
+              "deletions": 0
+            },
+            {
+              "path": "src/app/page.tsx",
+              "additions": 65,
+              "deletions": 0
+            },
+            {
+              "path": "tsconfig.json",
+              "additions": 34,
+              "deletions": 0
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "recentStats": {
+    "recentAdditions": 17951,
+    "recentDeletions": 571,
+    "recentCommitCount": 15
+  }
+}
