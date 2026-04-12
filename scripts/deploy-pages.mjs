@@ -85,9 +85,7 @@ run(npxCmd, [
   "wrangler",
   "pages",
   "deploy",
-  "out",
+  outDir,
   "--project-name",
   config.projectName,
-  "--branch",
-  config.branch,
 ]);
