@@ -20,12 +20,10 @@ jobs:
           node-version: "20"
 
       - name: Install dependencies
-        run: npm install
-        working-directory: web
+        run: cd web && npm install
 
       - name: Generate progress data
-        run: node scripts/generate-progress-data.mjs
-        working-directory: web
+        run: cd web && node scripts/generate-progress-data.mjs
 
       - name: Check for changes
         id: changed
