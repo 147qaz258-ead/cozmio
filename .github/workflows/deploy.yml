@@ -25,10 +25,13 @@ jobs:
 
       - name: Debug modules
         run: |
-          ls node_modules/framer-motion/dist/es/index.mjs 2>/dev/null && echo "framer-motion ESM: OK" || echo "framer-motion ESM: MISSING"
-          ls node_modules/gray-matter/ 2>/dev/null | head -3
-          echo "---"
-          node -e "const p=require('./node_modules/framer-motion/package.json'); console.log('fm exports keys:', Object.keys(p.exports||{}))"
+          pwd
+          ls node_modules/ | head -10
+          ls -la node_modules/framer-motion/ 2>/dev/null || echo "framer-motion DIR MISSING"
+          ls node_modules/gray-matter/ 2>/dev/null || echo "gray-matter DIR MISSING"
+          echo "--- npm version ---"
+          npm --version
+          node --version
 
       - name: Deploy
         run: node scripts/deploy-pages.mjs --skip-lint
