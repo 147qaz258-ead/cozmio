@@ -22,12 +22,7 @@ jobs:
           node-version: "20"
 
       - name: Install dependencies
-        run: |
-          echo "working dir:" && pwd
-          echo "root files:" && ls
-          echo "web files:" && ls web/
-          cd web && npm install --prefer-offline --no-audit --no-fund || true
-        shell: bash
+        run: cd web && npm install --prefer-offline --no-audit --no-fund || true
 
       - name: Deploy
         run: cd web && node scripts/deploy-pages.mjs --skip-lint
