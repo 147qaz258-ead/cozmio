@@ -26,4 +26,5 @@ jobs:
       - name: Deploy
         run: node scripts/deploy-pages.mjs --skip-lint
         env:
+          NEXT_TURBOPACK: "0"
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
