@@ -21,17 +21,7 @@ jobs:
           node-version: "20"
 
       - name: Install dependencies
-        run: npm ci
-
-      - name: Debug modules
-        run: |
-          pwd
-          ls node_modules/ | head -10
-          ls -la node_modules/framer-motion/ 2>/dev/null || echo "framer-motion DIR MISSING"
-          ls node_modules/gray-matter/ 2>/dev/null || echo "gray-matter DIR MISSING"
-          echo "--- npm version ---"
-          npm --version
-          node --version
+        run: npm install --prefer-offline=false --no-audit --no-fund
 
       - name: Deploy
         run: node scripts/deploy-pages.mjs --skip-lint
