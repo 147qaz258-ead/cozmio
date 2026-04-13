@@ -8,9 +8,6 @@ on:
 jobs:
   update-data:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: web
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,16 +21,18 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+        working-directory: web
 
       - name: Generate progress data
         run: node scripts/generate-progress-data.mjs
+        working-directory: web
 
       - name: Check for changes
         id: changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/data/progress.json
+          git add web/public/data/progress.json
           if git diff --cached --exit-code; then
             echo "changed=false" >> $GITHUB_OUTPUT
             echo "No data changes, skipping commit."
