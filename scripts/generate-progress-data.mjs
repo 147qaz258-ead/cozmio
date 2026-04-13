@@ -12,8 +12,9 @@ import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, "..");
-const OUT_DIR = path.join(ROOT, "public", "data");
+// Cozmio repo root is two levels up from web/scripts/
+const ROOT = path.resolve(__dirname, "..", "..");
+const OUT_DIR = path.join(ROOT, "web", "public", "data");
 const OUT_FILE = path.join(OUT_DIR, "progress.json");
 
 const DAYS_TO_SHOW = 21;
