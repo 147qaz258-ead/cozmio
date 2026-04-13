@@ -21,18 +21,9 @@ jobs:
           node-version: "22"
 
       - name: Install dependencies
-        run: npm install --force --no-audit --no-fund
-
-      - name: Verify modules
         run: |
-          echo "=== Total dirs in node_modules ==="
-          ls node_modules/ | wc -l
-          echo "=== Check framer-motion ==="
-          ls node_modules/ | grep -i "framer" || echo "framer NOT FOUND"
-          echo "=== Check gray-matter ==="
-          ls node_modules/ | grep -i "gray" || echo "gray NOT FOUND"
-          echo "=== npm ls framer-motion ==="
-          npm ls framer-motion 2>&1 | head -5
+          npm install --force --no-audit --no-fund
+          npm install framer-motion@12.38.0 gray-matter@4.0.3 remark@15.0.1 remark-gfm@4.0.1 remark-html@16.0.1 --force --no-audit --no-fund
 
       - name: Deploy
         run: node scripts/deploy-pages.mjs --skip-lint
