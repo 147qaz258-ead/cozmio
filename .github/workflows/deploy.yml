@@ -22,7 +22,7 @@ jobs:
           node-version: "20"
 
       - name: Install dependencies
-        run: npm install --prefer-offline --no-audit --no-fund || true
+        run: npm install --no-audit --no-fund
 
       - name: Deploy
         run: node scripts/deploy-pages.mjs --skip-lint
