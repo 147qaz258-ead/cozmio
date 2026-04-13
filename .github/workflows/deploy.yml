@@ -23,6 +23,17 @@ jobs:
       - name: Install dependencies
         run: npm cache clean --force && npm install --prefer-offline=false --no-audit --no-fund
 
+      - name: Verify modules
+        run: |
+          echo "=== Total dirs in node_modules ==="
+          ls node_modules/ | wc -l
+          echo "=== Check framer-motion ==="
+          ls node_modules/ | grep -i "framer" || echo "framer NOT FOUND"
+          echo "=== Check gray-matter ==="
+          ls node_modules/ | grep -i "gray" || echo "gray NOT FOUND"
+          echo "=== npm ls framer-motion ==="
+          npm ls framer-motion 2>&1 | head -5
+
       - name: Deploy
         run: node scripts/deploy-pages.mjs --skip-lint
         env:
