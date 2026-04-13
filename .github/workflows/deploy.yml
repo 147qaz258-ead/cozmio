@@ -22,11 +22,7 @@ jobs:
           node-version: "20"
 
       - name: Debug directory
-        run: |
-          echo "=== pwd ===" && pwd
-          echo "=== ls ===" && ls
-          echo "=== ls web ===" && ls web/
-          echo "=== cat web/package.json head ===" && head -3 web/package.json
+        run: pwd && ls -la && ls web/
 
       - name: Install dependencies
         run: cd web && npm install
