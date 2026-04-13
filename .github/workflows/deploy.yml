@@ -23,14 +23,14 @@ jobs:
 
       - name: Install dependencies
         run: |
-          echo "=== working dir ===" && pwd
-          echo "=== root files ===" && ls
-          echo "=== web files ===" && ls web/
-          echo "=== package.json ===" && cat web/package.json | head -5
-          cd web && npm install --prefer-offline --no-audit --no-fund; echo "exit code: $?"
+          echo "working dir:" && pwd
+          echo "root files:" && ls
+          echo "web files:" && ls web/
+          cd web && npm install --prefer-offline --no-audit --no-fund || true
         shell: bash
 
       - name: Deploy
-        run: cd web && node scripts/deploy-pages.mjs --skip-lint; echo "deploy exit: $?"
+        run: cd web && node scripts/deploy-pages.mjs --skip-lint
+        shell: bash
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
