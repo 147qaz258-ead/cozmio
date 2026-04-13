@@ -21,7 +21,7 @@ jobs:
           node-version: "22"
 
       - name: Install dependencies
-        run: npm install --prefer-offline=false --no-audit --no-fund
+        run: npm cache clean --force && npm install --prefer-offline=false --no-audit --no-fund
 
       - name: Deploy
         run: node scripts/deploy-pages.mjs --skip-lint
