@@ -22,7 +22,12 @@ jobs:
           node-version: "20"
 
       - name: Debug directory
-        run: pwd && ls -la && ls web/
+        run: |
+          set -x
+          pwd
+          ls -la
+          ls web/
+        shell: bash
 
       - name: Install dependencies
         run: cd web && npm install
