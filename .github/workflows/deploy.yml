@@ -21,14 +21,6 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Debug directory
-        run: |
-          set -x
-          pwd
-          ls -la
-          ls web/
-        shell: bash
-
       - name: Install dependencies
         run: cd web && npm install
 
