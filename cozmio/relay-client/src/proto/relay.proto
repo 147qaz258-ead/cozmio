@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package relay;
+
+message DispatchRequest {
+    string agent_name = 1;
+    string original_suggestion = 2;
+    string dispatched_task = 3;
+}
+
+message DispatchResponse {
+    string session_id = 1;
+    SessionStatus status = 2;
+}
+
+message StatusRequest { string session_id = 1; }
+message StatusResponse { string session_id = 1; SessionStatus status = 2; int64 started_at = 3; int64 updated_at = 4; int64 duration_secs = 5; }
+message ProgressRequest { string session_id = 1; }
+message ProgressResponse { string session_id = 1; repeated ProgressEntry entries = 2; }
+message InterruptRequest { string session_id = 1; }
+message InterruptResponse { bool success = 1; }
+message ResultRequest { string session_id = 1; }
+message ResultResponse { string session_id = 1; ExecutionResult result = 2; }
+message ProgressEvent {
+    string session_id = 1;
+    int64 timestamp = 2;
+    string message = 3;
+    LogLevel level = 4;
+    bool terminal = 5;
+    SessionStatus terminal_status = 6;
+}
+
+enum SessionStatus { PENDING = 0; RUNNING = 1; WAITING = 2; COMPLETED = 3; FAILED = 4; INTERRUPTED = 5; }
+enum LogLevel { INFO = 0; WARN = 1; ERROR = 2; }
+
+message ExecutionResult { string summary = 1; string raw_output = 2; int64 duration_secs = 3; bool success = 4; string error_message = 5; }
+message ProgressEntry { int64 timestamp = 1; string message = 2; LogLevel level = 3; }
+message SubscribeRequest { string session_id = 1; }

@@ -1,0 +1,32 @@
+# Cozmio Box Model Configuration
+# Copy this to /opt/cozmio/config/box-model.toml and adjust as needed
+#
+# This file configures the model runtime for cozmio-box-worker.
+# The worker reads this config on startup to determine which provider to use.
+
+# Provider type: "llama_cpp" or "mock"
+# - "llama_cpp": Use local llama.cpp server with GGUF model
+# - "mock": Use mock provider (for development/testing only)
+provider = "llama_cpp"
+
+# Path to GGUF model file (required for llama_cpp provider)
+# On Raspberry Pi: /opt/cozmio/models/current.gguf
+model_path = "/opt/cozmio/models/current.gguf"
+
+# llama.cpp server URL (for llama_cpp provider)
+# The llama-server must be running at this URL
+server_url = "http://localhost:8080"
+
+# Model context size (number of tokens)
+# Adjust based on available RAM:
+#   - 7.6GB RAM (Pi 4): 2048 is safe
+#   - More RAM: can increase to 4096
+context_size = 2048
+
+# Number of CPU threads for inference (0 = auto-detect)
+# Pi 4 has 4 cores, set to 4 for best performance
+threads = 4
+
+# Inference timeout in seconds
+# If inference takes longer than this, it will be aborted
+timeout_secs = 120

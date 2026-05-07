@@ -1,0 +1,15 @@
+[package]
+name = "cozmio-cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cozmio_core = { path = "../cozmio_core" }
+cozmio_model = { path = "../cozmio_model" }
+relay-client = { path = "../relay-client" }
+cozmio_memory = { path = "../cozmio_memory", default-features = false }
+clap = { version = "4", features = ["derive"] }
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+dirs = "5"

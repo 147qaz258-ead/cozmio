@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>Cozmio Workstation</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 196px;
+      height: 148px;
+      background: transparent;
+      overflow: hidden;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', 'Segoe UI', sans-serif;
+      color: #5a5040;
+    }
+    body { padding: 6px; }
+    #mini-workstation {
+      width: 184px;
+      height: 136px;
+      border: 1px solid rgba(120, 96, 64, 0.22);
+      border-radius: 8px;
+      background: rgba(254, 252, 245, 0.96);
+      box-shadow: 0 10px 28px rgba(64, 48, 32, 0.18);
+      overflow: hidden;
+      position: relative;
+      backdrop-filter: blur(12px);
+    }
+    .mini-main {
+      display: grid;
+      grid-template-columns: 66px 1fr;
+      gap: 8px;
+      padding: 10px 10px 6px;
+      min-height: 84px;
+    }
+    .mini-scene {
+      width: 62px;
+      height: 62px;
+      position: relative;
+      image-rendering: pixelated;
+    }
+    .mini-agent-img {
+      width: 60px;
+      height: 60px;
+      object-fit: contain;
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      image-rendering: auto;
+      filter: drop-shadow(0 3px 5px rgba(45, 32, 22, 0.22));
+      animation: mini-breathe 1.8s steps(2, end) infinite;
+    }
+    #mini-workstation[data-visual-state="executing"] .mini-agent-img,
+    #mini-workstation[data-visual-state="analyzing"] .mini-agent-img {
+      animation: mini-work 0.55s steps(2, end) infinite;
+    }
+    #mini-workstation[data-visual-state="confirm"] .mini-agent-img {
+      animation: mini-alert 0.9s steps(2, end) infinite;
+    }
+    #mini-workstation[data-visual-state="error"] .mini-agent-img {
+      animation: mini-glitch 0.42s steps(2, end) infinite;
+    }
+    #mini-workstation[data-visual-state="offline"] .mini-agent-img {
+      animation: mini-sleep 2.8s steps(2, end) infinite;
+      opacity: 0.78;
+    }
+    .mini-copy { min-width: 0; padding-top: 1px; }
+    .mini-kicker { font-size: 9px; color: #a09080; letter-spacing: 0.9px; font-weight: 700; }
+    .mini-title { font-size: 13px; color: #4a3a25; font-weight: 700; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mini-summary { font-size: 10px; line-height: 1.35; color: #756855; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .mini-targets {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+      padding: 0 10px 8px;
+    }
+    .mini-target {
+      min-width: 0;
+      border: 1px solid #ece2d2;
+      border-radius: 4px;
+      background: #fffaf0;
+      padding: 4px 3px;
+      text-align: center;
+    }
+    .mini-led {
+      display: block;
+      width: 7px;
+      height: 7px;
+      margin: 0 auto 3px;
+      border-radius: 50%;
+      background: var(--target-color, #8e8e93);
+      box-shadow: 0 0 5px var(--target-color, #8e8e93);
+    }
+    .mini-target-name { display: block; font-size: 8px; color: #7a6a54; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mini-actions {
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      bottom: 6px;
+      display: flex;
+      gap: 6px;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.14s ease, transform 0.14s ease;
+    }
+    #mini-workstation:hover .mini-actions { opacity: 1; transform: translateY(0); }
+    .mini-btn {
+      flex: 1;
+      height: 22px;
+      border: 1px solid rgba(90, 80, 64, 0.14);
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      color: #4a3a25;
+      background: #f8f0df;
+    }
+    .mini-btn.btn-primary { color: #fff; background: #0a84ff; }
+    .mini-btn.btn-warning { color: #2f2108; background: #ffbc45; }
+    .mini-btn.btn-danger { color: #fff; background: #d94a3a; }
+    .mini-btn.btn-secondary { color: #5a5040; background: #eadfce; }
+    @keyframes mini-breathe {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-2px); }
+    }
+    @keyframes mini-work {
+      0%, 100% { transform: translate(0, 0); }
+      50% { transform: translate(2px, -1px); }
+    }
+    @keyframes mini-alert {
+      0%, 100% { transform: translateY(0) scale(1); filter: drop-shadow(0 0 4px rgba(255, 159, 10, 0.35)); }
+      50% { transform: translateY(-2px) scale(1.03); filter: drop-shadow(0 0 8px rgba(255, 159, 10, 0.75)); }
+    }
+    @keyframes mini-glitch {
+      0%, 100% { transform: translate(0, 0); filter: drop-shadow(2px 0 0 rgba(255, 0, 80, 0.45)); }
+      50% { transform: translate(-2px, 1px); filter: drop-shadow(-2px 0 0 rgba(0, 220, 255, 0.45)); }
+    }
+    @keyframes mini-sleep {
+      0%, 100% { transform: translateY(1px); }
+      50% { transform: translateY(3px); }
+    }
+  </style>
+</head>
+<body>
+  <div id="mini-workstation"></div>
+  <script src="./components/MiniDot.js"></script>
+</body>
+</html>

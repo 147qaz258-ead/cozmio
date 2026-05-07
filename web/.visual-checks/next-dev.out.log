@@ -1,0 +1,27 @@
+
+> web@0.1.0 dev
+> next dev --hostname 127.0.0.1 --port 3000
+
+▲ Next.js 16.2.2 (Turbopack)
+- Local:         http://127.0.0.1:3000
+- Network:       http://127.0.0.1:3000
+✓ Ready in 454ms
+
+ GET / 200 in 474ms (next.js: 191ms, application-code: 283ms)
+✓ Compiled in 338ms
+ GET / 200 in 92ms (next.js: 4ms, application-code: 88ms)
+ GET /desktop/ 200 in 238ms (next.js: 32ms, application-code: 206ms)
+✓ Compiled in 470ms
+ GET /desktop/ 200 in 333ms (next.js: 85ms, application-code: 247ms)
+ GET /desktop/ 200 in 159ms (next.js: 3ms, application-code: 156ms)
+ GET /desktop/ 200 in 104ms (next.js: 5ms, application-code: 99ms)
+ GET /desktop/ 200 in 248ms (next.js: 3ms, application-code: 245ms)
+✓ Compiled in 411ms
+ GET /desktop/ 200 in 71ms (next.js: 3ms, application-code: 67ms)
+ GET / 200 in 261ms (next.js: 71ms, application-code: 190ms)
+ GET / 200 in 89ms (next.js: 4ms, application-code: 86ms)
+ GET /cases/ 200 in 84ms (next.js: 34ms, application-code: 50ms)
+ GET /desktop/ 200 in 50ms (next.js: 2ms, application-code: 47ms)
+ GET /request/ 200 in 49ms (next.js: 27ms, application-code: 22ms)
+ GET / 200 in 472ms (next.js: 165ms, application-code: 308ms)
+ GET /agents/ 200 in 311ms (next.js: 203ms, application-code: 108ms)

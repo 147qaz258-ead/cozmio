@@ -1,0 +1,17 @@
+# Cozmio Box Model Configuration
+# Copy this file to /opt/cozmio/config/box-model.toml
+
+# Model provider type: "mock" (Phase 2) or "llama" (Phase 3+)
+provider_type = "mock"
+
+# GGUF model file path (for llama provider)
+model_path = "/opt/cozmio/models/ggml-model-q4_0.bin"
+
+# Model context size (tokens)
+context_size = 2048
+
+# Inference timeout in seconds
+timeout_secs = 60
+
+# Number of CPU threads (0 = auto)
+threads = 4
