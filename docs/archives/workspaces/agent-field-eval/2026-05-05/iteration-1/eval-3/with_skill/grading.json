@@ -1,0 +1,23 @@
+{
+  "expectations": [
+    {
+      "id": 1,
+      "description": "Skill correctly did NOT trigger for plain writing task - output is a writing title, not an eval record",
+      "grade": "pass",
+      "evidence": "Output is a WeChat public account title with alternatives, not an eval record"
+    },
+    {
+      "id": 2,
+      "description": "Output contains a WeChat public account title (公众号标题)",
+      "grade": "pass",
+      "evidence": "Output contains '标题：《AI助手时代：你的第二大脑正在进化》' which is a 公众号标题"
+    },
+    {
+      "id": 3,
+      "description": "Output does NOT contain 'scenario' or 'variable_under_test' in eval context",
+      "grade": "pass",
+      "evidence": "Neither 'scenario' nor 'variable_under_test' appears in the output"
+    }
+  ],
+  "overall": "pass"
+}

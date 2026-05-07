@@ -1,0 +1,90 @@
+[
+  {
+    "id": "PHASE-1",
+    "category": "model-output",
+    "title": "模型输出格式从 verbose thinking 转为 clean judgment",
+    "type": "model_output_validated",
+    "description": "模型输出应包含 judgment/abstain/grounds，而不是 verbose thinking 过程",
+    "verification_script": "verification/verify_model_output.ps1（待创建）",
+    "status": "pass",
+    "passes": true,
+    "last_verification": {
+      "status": "pass",
+      "timestamp": "2026-04-23",
+      "summary": "c962a92 fix(model_call): extract clean judgment after done thinking marker"
+    },
+    "notes": "Phase 1 完成，模型输出格式已改为 clean judgment"
+  },
+  {
+    "id": "VERIFICATION-UI",
+    "category": "desktop-ui",
+    "title": "桌面行为验证脚本",
+    "type": "traditional_software",
+    "description": "使用 UI Automation 验证桌面行为：进程运行、窗口可见、单实例、状态文件",
+    "verification_script": "verification/verify_ui.ps1",
+    "status": "pass",
+    "passes": true,
+    "last_verification": {
+      "status": "pass",
+      "timestamp": "2026-04-24",
+      "summary": "verify_ui.ps1 6/6 checks passed"
+    },
+    "notes": "Layer 1-3 已自动化，Layer 4 需要人工"
+  },
+  {
+    "id": "RELAY-V8",
+    "category": "relay-engine",
+    "title": "Relay Engine V8 协议和会话管理",
+    "type": "traditional_software",
+    "description": "实现 V8 协议和 session 管理，dispatch → session_id → result 流程",
+    "verification_script": "relay-engine/target/release/relay-engine.exe",
+    "status": "pass",
+    "passes": true,
+    "last_verification": {
+      "status": "pass",
+      "timestamp": "2026-04-23",
+      "summary": "c13e790 feat(relay): implement V8 protocol and session management"
+    },
+    "notes": "E2E 测试通过"
+  },
+  {
+    "id": "RUNTIME-STATE",
+    "category": "desktop-ui",
+    "title": "runtime_state.json 状态观察者",
+    "type": "traditional_software",
+    "description": "应用运行时状态持久化到 %LOCALAPPDATA%/cozmio/runtime_state.json",
+    "verification_script": "verification/desktop_behavior_test.ps1",
+    "status": "pass",
+    "passes": true,
+    "last_verification": {
+      "status": "pass",
+      "timestamp": "2026-04-23",
+      "summary": "6a8856e feat: add runtime_state.json state observer and three-tier verification"
+    },
+    "notes": "Stop 时 tick 停止增长，Running 时持续增长"
+  },
+  {
+    "id": "PHASE-2",
+    "category": "model-output",
+    "title": "Phase 2 模型输出质量验证",
+    "type": "model_output_validated",
+    "description": "对模型输出进行样本验证：幻觉、abstain 正确性、grounds 引用",
+    "verification_script": "verification/verify_model_output.ps1（待创建）",
+    "status": "pending",
+    "passes": false,
+    "last_verification": null,
+    "notes": "等待具体计划"
+  },
+  {
+    "id": "MEMORY-FLYWHEEL-WIDE-STAGE",
+    "category": "agent-memory",
+    "title": "Agent self-maintained automatic memory flywheel",
+    "type": "agent_system",
+    "description": "Records factual desktop experience, learns from feedback and executor outcomes, consolidates agent-written memory, recalls it into popup/handoff context, exposes inspector UI, and verifies behavior changes by replay.",
+    "verification_script": "cargo test -p cozmio_memory; cargo test -p cozmio memory_consolidation; cargo test -p cozmio prompt_context; cargo test -p cozmio semantic_boundary; cargo check -p cozmio_memory; cargo check -p cozmio",
+    "status": "in_progress",
+    "passes": false,
+    "last_verification": null,
+    "notes": "Wide stage execution started from docs/superpowers/plans/2026-05-07-agent-self-maintained-memory-flywheel-wide-stage-plan.md. Current target: automatic experience capture -> consolidation -> recall/inspector/replay path."
+  }
+]

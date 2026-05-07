@@ -1,0 +1,124 @@
+# 记忆竞争有没有让 agent 更懂当前页面？
+
+## 直接回答：证据不足以支撑这个结论
+
+当前 codebase 中，memory_competition 的设计目的是在 agent 需要主动介入时，通过 `build_reminder_context()` 提供"相关背景信息"，而不是用来"更懂当前页面"。这是两个不同的目标。
+
+---
+
+## 一、memory_competition 实际在做什么
+
+从 `cozmio_memory/src/competition.rs` 的代码来看，`MemoryCompetition::build_reminder_context()` 做的是：
+
+1. **recent_context** — 从 context_slices 拿最近 2 小时内的事件聚合摘要
+2. **related decisions** — 从 decision_memory 拿与当前线程相关的决策（或 seed decisions 作为 auxiliary）
+3. **relevant_skills** — 从 skill_memory 拿最近用过的 skill
+4. **task_state** — 从 task_threads 拿当前任务的进度状态
+
+关键约束（第 167-169 行）：
+```rust
+let has_imported = evidence_refs.iter().any(|e| e.source == "imported");
+if !has_imported {
+    return Err(MemoryError::InsufficientImportedData);
+}
+```
+必须有至少一条 `imported` 类型的 evidence 才能成功返回 ReminderContext。这意味着它高度依赖 action_log.jsonl 中已导入的历史事件。
+
+---
+
+## 二、"更懂当前页面"的证据缺口
+
+### 2.1 证据层面
+
+memory-comparison-sample.json 中的对比是**假设性的**：
+
+```
+old_reason: "检测到你在编写代码"（without memory context）
+reminder_context: 包含 "Cozmio 使用体验改造" 等具体上下文（with memory context）
+```
+
+但这只是"what would be different"的描述，不是"agent actually performed better"的验证。没有真实的 A/B test、没有评分、没有 ground truth 判断。
+
+### 2.2 验证层面
+
+verification/memory-line-value-verification.md 验收了 Memory Core H1 的 P0 修复：
+- context_slices 生成正常 ✅
+- thread_id 链路已接通 ✅
+- Chinese search 可用 ✅
+- recent_context 非空 ✅
+
+但它明确指出了两个关键限制：
+- **Vector search 不可用**：FastEmbed ONNX linking 失败，所有 semantic search 降级为 FTS5 关键词匹配
+- **Seed decisions 冒充风险**：即使加了 [seed辅助] 标签，仍会显示在 replay 中
+
+这意味着 `build_reminder_context()` 提供的信息质量取决于 imported memory_events 的数量和相关性。在数据稀疏的情况下，它可能反而提供噪声而非有用的上下文。
+
+### 2.3 实际数据状态
+
+从 memory-line-value-verification.md 的数据资产表：
+- memory_events: 240 条（真实可用）
+- context_slices: 29 条（真实可用）
+- task_threads: 3 条（seed + thread_linker）
+- decision_memory: 3 条（仅作 auxiliary）
+- skill_memory: 1 条（seed）
+
+对于"更懂当前页面"这个目标，相关的是 `related_decisions` 和 `relevant_skills`，但这两者的数量分别只有 3 条和 1 条。在只有 3 条 decision_memory 的情况下，竞争机制并没有足够的数据来发挥选择作用。
+
+---
+
+## 三、"更懂当前页面"的反例风险
+
+memory_competition 的设计隐含着一个风险：如果 imported memory_events 中存在噪音或与当前场景不相关的信息，这些信息会通过 related_decisions 和 recent_context 进入 agent 的上下文，而不是帮助它"更懂"，而是误导它。
+
+competition.rs 第 74-93 行用 `sanitize_fts5_query()` 搜索历史事件，关键词来自 `window_title + content_text`。但如果用户的 window_title 是 `cmd.exe`，sanitize 后只剩下空格，没有任何搜索结果。这种降级行为没有错误提示，只返回空结果，然后 related_decisions 会 fallback 到 seed decisions——这些可能与当前任务完全无关。
+
+---
+
+## 四、eval 数据的间接支持
+
+在 agent-field-eval-workspace 的数据中：
+
+| eval | with_skill output | without_skill output | 比较结果 |
+|------|------------------|---------------------|---------|
+| eval-1 | 完整的 eval JSON（关于主动提醒资格） | 泛泛的主动提醒资格分析 | with_skill 有结构化评分，without 没有 |
+| eval-2 | eval JSON（eval-meta-001，confounded） | brainstorming skill 总结 | 无法比较，因为 confounded |
+| eval-4 | 标题列表和推荐 | 空（only_skill: false 的案例） | 无法比较 |
+
+eval-1 是最有参考价值的案例：启用 agent-field-eval skill 后，输出是结构化的 6 维评分 JSON；不启用时是泛泛的描述。这说明 skill 本身改变了 agent 的输出格式和完整性。但这是"eval 框架使用能力的提升"，不是"对当前页面理解的提升"。
+
+**关键缺失：没有任何 eval case 专门测试 memory_competition 是否让 agent 在"理解当前页面"这个维度上变好。**
+
+---
+
+## 五、结论
+
+| 维度 | 状态 |
+|------|------|
+| memory_competition 设计目标是否是"更懂当前页面" | **否** — 目标是"提供相关背景信息以支持介入决策" |
+| 有无直接证据证明它让 agent 更懂当前页面 | **无** — 只有假设性对比描述，没有真实 A/B 评分 |
+| 有无间接证据（eval 数据支持） | **很弱** — eval-1 支持 skill 改变了输出格式，不是内容质量 |
+| 当前数据是否足够支撑竞争机制发挥作用 | **不足** — decision_memory 仅 3 条，skill_memory 仅 1 条 |
+| 关键未修复问题 | **Vector search 不可用**，semantic 检索降级为 FTS5 关键词匹配 |
+
+**建议：**
+
+如果要回答"记忆竞争有没有让 agent 更懂当前页面"，需要设计一个专门的 eval：
+
+1. 固定场景：给 agent 一个具体的窗口截图 + 元信息
+2. Baseline：只用当前窗口信息，不加 ReminderContext
+3. Variant：加入 build_reminder_context() 的输出
+4. Ground truth：人工判断 agent 的输出是否"更准确理解了当前页面"
+5. 评分维度：specificity（是否针对当前任务）、relevance（提供的背景是否相关）、accuracy（是否有事实性错误）
+
+当前 codebase 没有这个 eval，所以结论是：**证据不足，无法支持"是"或"否"。**
+
+---
+
+## 相关文件索引
+
+- `cozmio/cozmio_memory/src/competition.rs` — MemoryCompetition 和 build_reminder_context 实现
+- `cozmio/cozmio_memory/src/decision_memory.rs` — DecisionMemoryStore
+- `cozmio/cozmio_memory/src/skill_memory.rs` — SkillMemoryStore
+- `verification/memory-comparison-sample.json` — 假设性对比描述
+- `verification/memory-line-value-verification.md` — H1 验证结果和仍存在的限制
+- `agent-field-eval-workspace/iteration-1/` — 6 个 eval case 的输出和 timing 数据

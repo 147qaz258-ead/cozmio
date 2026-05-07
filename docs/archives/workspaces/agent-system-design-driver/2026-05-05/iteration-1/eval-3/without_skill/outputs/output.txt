@@ -1,0 +1,224 @@
+# memory_competition 工作原理分析
+
+## 概述
+
+`memory_competition` 是 Cozmio 项目中 `cozmio_memory` crate 的一个核心模块，入口文件为：
+
+```
+cozmio/cozmio_memory/src/competition.rs
+```
+
+它通过 `MemoryCompetition` 结构体对外提供 `build_reminder_context()` 方法，用于从多个 memory store 中聚合信息，构建一个 "reminder context"（提醒上下文），供模型在生成回复/提示时使用。
+
+---
+
+## 核心数据结构
+
+### ActivityNote（输入）
+```rust
+pub struct ActivityNote {
+    pub window_title: String,       // 当前窗口标题
+    pub content_text: String,        // 当前活动内容
+    pub timestamp: DateTime<Utc>,   // 时间戳
+    pub current_thread_id: Option<i64>,  // 当前任务线程 ID
+}
+```
+
+### ReminderContext（输出）
+```rust
+pub struct ReminderContext {
+    pub current_activity: String,       // "window_title - content_text"
+    pub recent_context: String,          // 来自 context_slices 的近期上下文摘要
+    pub related_decisions: String,       // 来自 decision_memory 的相关决策
+    pub relevant_skills: String,         // 来自 skill_memory 的相关技能
+    pub task_state: Option<String>,      // 来自 task_threads 的当前任务状态
+    pub evidence_refs: Vec<EvidenceRef>, // 所有证据引用的完整列表
+}
+```
+
+### EvidenceRef
+```rust
+pub struct EvidenceRef {
+    pub source: String,        // "imported", "seed", "memory_event" 等
+    pub memory_type: String,   // "context_slice", "decision", "skill", "memory_event"
+    pub id: i64,
+    pub content_snippet: String,
+    pub timestamp: Option<String>,
+}
+```
+
+---
+
+## 工作流程：build_reminder_context()
+
+`build_reminder_context()` 按顺序执行以下 5 个步骤：
+
+### Step 1: recent_context —— 来自 ContextSlicesStore
+
+获取 `ActivityNote.timestamp` 之后的 context slices（最近约 2 小时内的上下文摘要）。
+
+```rust
+let slices_store = ContextSlicesStore::new(self.db);
+if let Ok(slices) = slices_store.get_since_ts(note.timestamp) {
+    for slice in slices {
+        recent_context_parts.push(slice.summary.clone());
+        evidence_refs.push(EvidenceRef { source: slice.evidence_source, memory_type: "context_slice", ... });
+    }
+}
+```
+
+### Step 2: related events —— 来自 SearchEngine（FTS5 全文搜索）
+
+用 `window_title` 作为搜索词，在 memory_events 中做全文搜索（最多 10 条结果）。搜索前会清理 FTS5 特殊字符（`. ^ - + : * ( ) " ' { } [ ] \ /`），因为文件路径中的点号（如 `cmd.exe`）会导致语法错误。
+
+```rust
+let search_text = sanitize_fts5_query(&note.window_title);
+let search_results = self.search_engine.search(&SearchQuery {
+    text: Some(search_text),
+    thread_id: note.current_thread_id,
+    limit: 10,
+});
+// 为每条结果创建 EvidenceRef，memory_type = "memory_event"
+```
+
+### Step 3: related_decisions —— 来自 DecisionMemoryStore
+
+优先使用 `current_thread_id` 查询线程专属决策；如果没有找到，则回退到全部决策（其中 seed 决策会标记为 `[seed辅助]`）。
+
+```rust
+let decisions: Vec<_> = if let Some(tid) = note.current_thread_id {
+    decisions_store.get_by_thread(tid).unwrap_or_default()
+} else {
+    Vec::new()
+};
+
+if !decisions.is_empty() {
+    // 使用线程专属决策
+} else {
+    // 回退到全部决策，最多取 5 条
+    // seed 决策标记为 "[seed辅助]"
+}
+```
+
+### Step 4: relevant_skills —— 来自 SkillMemoryStore
+
+取最多 3 条技能，格式为 `"name: procedure"`。
+
+```rust
+let skills_store = SkillMemoryStore::new(self.db);
+if let Ok(skills) = skills_store.get_all() {
+    for skill in skills.into_iter().take(3) {
+        relevant_skills_parts.push(format!("{}: {}", skill.name, skill.procedure));
+    }
+}
+```
+
+### Step 5: task_state —— 来自 TaskThreadsStore
+
+如果有 `current_thread_id`，则获取该线程的名称和当前状态。
+
+```rust
+if let Some(tid) = note.current_thread_id {
+    let threads_store = TaskThreadsStore::new(self.db);
+    if let Ok(Some(thread)) = threads_store.get_by_id(tid) {
+        task_state_val = Some(format!("Task: {} - {}", thread.name, thread.current_state));
+    }
+}
+```
+
+### 关键校验：必须包含 imported 证据
+
+```rust
+let has_imported = evidence_refs.iter().any(|e| e.source == "imported");
+if !has_imported {
+    return Err(MemoryError::InsufficientImportedData);
+}
+```
+
+**如果 evidence_refs 中没有任何 source == "imported" 的记录，会返回 `InsufficientImportedData` 错误。** 这意味着 memory_competition 要求至少已经导入过一次外部数据（imported evidence）才能构建提醒上下文。
+
+---
+
+## MemoryCore 封装
+
+`MemoryCompetition` 通过 `MemoryCore` 提供：
+
+```rust
+pub struct MemoryCore<'a> {
+    pub db: &'a Database,
+    pub embed_provider: Option<Arc<dyn EmbeddingProvider>>,
+}
+
+impl<'a> MemoryCore<'a> {
+    pub fn competition(&self) -> MemoryCompetition<'_> {
+        MemoryCompetition::new(self.db, self.search_engine())
+    }
+}
+```
+
+---
+
+## Tauri IPC 调用入口
+
+`build_reminder_context` 通过两个 Tauri command 对外暴露：
+
+### 1. `build_activity_context`（memory_commands.rs:345）
+```rust
+#[tauri::command]
+pub async fn build_activity_context(
+    window_title: String,
+    content_text: String,
+    current_thread_id: Option<i64>,
+) -> Result<ReminderContextDto, String>
+```
+接收前端传来的窗口信息，构造 `ActivityNote`，调用 `competition.build_reminder_context()`。
+
+### 2. `run_suggestion_replay`（memory_commands.rs:387）
+```rust
+#[tauri::command]
+pub async fn run_suggestion_replay() -> Result<ReminderContextDto, String>
+```
+取最近一条 memory event，用它的 window_title 和 content 构造 `ActivityNote`，回放 reminder context 的构建过程，用于建议回放功能。
+
+---
+
+## 数据流总结
+
+```
+前端 / 外部调用
+    │
+    ▼
+build_activity_context()  或  run_suggestion_replay()
+    │  (memory_commands.rs)
+    ▼
+ActivityNote { window_title, content_text, timestamp, current_thread_id }
+    │
+    ▼
+MemoryCompetition::build_reminder_context()
+    │
+    ├─ Step 1: ContextSlicesStore.get_since_ts()    → recent_context
+    ├─ Step 2: SearchEngine.search()               → related events
+    ├─ Step 3: DecisionMemoryStore.get_by_thread() → related_decisions
+    ├─ Step 4: SkillMemoryStore.get_all()         → relevant_skills
+    ├─ Step 5: TaskThreadsStore.get_by_id()        → task_state
+    │
+    ▼
+校验: 至少有一个 source == "imported" 的 evidence
+    │
+    ▼
+ReminderContext { current_activity, recent_context, related_decisions,
+                  relevant_skills, task_state, evidence_refs }
+    │
+    ▼
+ReminderContextDto（JSON 序列化后返回前端）
+```
+
+---
+
+## 关键设计意图
+
+1. **多源聚合**：将 context slices、memory events、decisions、skills、task threads 五个数据源的信息合并为一个统一的 reminder context。
+2. **线程感知**：优先使用 `current_thread_id` 做线程相关的决策查询，实现任务级别的记忆关联。
+3. **降级策略**：线程专属决策为空时，回退到全局 seed 决策，不至于完全无法返回内容。
+4. **安全校验**：必须包含 "imported" 来源的证据，防止无导入数据时产生无意义的 reminder。
+5. **FTS5 防护**：`sanitize_fts5_query` 清理窗口标题中的特殊字符，避免全文搜索语法错误。

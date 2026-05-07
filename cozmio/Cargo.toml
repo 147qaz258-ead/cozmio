@@ -1,0 +1,3 @@
+[workspace]
+resolver = "2"
+members = ["cozmio_core", "cozmio_capture", "cozmio_model", "cozmio_verify", "src-tauri", "relay-engine", "relay-client", "cozmio_memory", "cozmio-box-worker", "memory-cli", "embedding-probe", "cozmio-cli"]

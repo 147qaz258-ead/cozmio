@@ -1,0 +1,560 @@
+# 长期记忆模块设计
+
+## 1. 背景与目标
+
+### 1.1 现有系统分析
+
+`cozmio_memory` 已有的记忆子系统如下：
+
+| 子模块 | 存储内容 | 数据模型 | 检索方式 |
+|--------|---------|---------|---------|
+| `MemoryEvent` | 单次行为记录（时间戳、窗口标题、内容、原始引用、embedding、thread_id） | 行存储，SQLite | FTS5 全文检索 + 向量语义检索 |
+| `ContextSlice` | 15分钟时间窗口聚合摘要（摘要、实体、主题、引用事件ID列表） | 行存储 | 关键词过滤 |
+| `TaskThread` | 任务/项目级聚合（名称、状态、开放问题、决策、最近切片ID列表） | 行存储 | 按 ID 或名称查询 |
+| `DecisionMemory` | 决策记录（类型、内容、证据、关联线程） | 行存储 | 按 thread_id 筛选 |
+| `SkillMemory` | 技能/流程记录（名称、触发条件、步骤） | 行存储 | 全表扫描 |
+| `SearchEngine` | 统一的混合检索入口（FTS5 + 向量 + 元数据过滤） | - | 混合检索 |
+
+**现有系统的核心局限：**
+
+1. **时间衰减模型缺失**：所有记忆等权存储，无法区分"近期重要"和"历史积累"。
+2. **重要性/置信度机制缺失**：没有记录记忆是被验证过的还是推测的，无法区分来源可靠性。
+3. **跨会话记忆保留**：应用重启后，`MemoryEvent` 队列可能被截断（只在 `build_slices_from_events` 中使用），没有长期保留策略。
+4. **`ActivityNote` 的临时性**：`ReminderContext` 的构建完全依赖实时查询，每次都需要从 DB 拉取多个表的数据，没有预计算和缓存机制。
+5. **缺乏主动回忆**：现有系统是"被动检索"——只有当模型主动发起搜索时才提供记忆，没有"定期复述"机制。
+6. **没有层级遗忘**：所有 `evidence_source = "imported"` 的数据都被永久保留，没有按时间或重要性衰减或淘汰的机制。
+
+### 1.2 设计目标
+
+为 Cozmio 设计一个**长期记忆（Long-Term Memory, LTM）模块**，需满足：
+
+1. **持久性**：跨会话保留关键记忆，不因应用重启丢失。
+2. **可检索性**：支持多维检索（时间、重要性、来源、语义）。
+3. **衰减机制**：记忆有生命周期，不是无限增长的。
+4. **来源追踪**：区分导入数据、生成数据、用户确认数据，赋予不同的可信度。
+5. **最小侵入**：复用现有 `cozmio_memory` 的基础设施，不替换已有模块。
+
+---
+
+## 2. 整体架构
+
+### 2.1 模块层级
+
+```
+cozmio_memory（现有）
+    ├── memory_events     (短期事件流)
+    ├── context_slices    (中期限时聚合)
+    ├── decision_memory   (决策记录)
+    ├── task_threads      (任务状态)
+    ├── skill_memory      (技能库)
+    └── search            (检索引擎)
+
+新增 LTM 层（长期记忆）
+    ├── ltm_store         (长期记忆主存储)
+    ├── ltm_import        (从现有模块导入记忆)
+    ├── ltm_recall        (主动回忆/被动检索)
+    ├── ltm_decay         (衰减/遗忘策略)
+    └── ltm_config        (配置管理)
+```
+
+### 2.2 数据流
+
+```
+Session 开始
+    │
+    ▼
+┌─────────────────────────────┐
+│  LTM Import                 │
+│  - 从 context_slices 挑选值得长期保留的切片   │
+│  - 从 decision_memory 提升高置信度决策       │
+│  - 从 task_threads 提取持久项目状态          │
+└────────────┬────────────────┘
+             │ 写入 / 更新
+             ▼
+┌─────────────────────────────┐
+│  LTM Store (SQLite)         │
+│  - long_term_memory 表      │
+│  - importance 衰减由 decay 模块管理  │
+└────────────┬────────────────┘
+             │ 查询 / 检索
+             ▼
+┌─────────────────────────────┐
+│  LTM Recall                 │
+│  - 被动检索：被 SearchEngine 调用             │
+│  - 主动回忆：定期将高重要性记忆注入 prompt context │
+└────────────┬────────────────┘
+             │ 注入
+             ▼
+┌─────────────────────────────┐
+│  Prompt / Model Context     │
+└─────────────────────────────┘
+
+Session 结束
+    │
+    ▼
+┌─────────────────────────────┐
+│  LTM Decay                  │
+│  - 按配置衰减策略降低 importance         │
+│  - 删除 < threshold 的记录              │
+└─────────────────────────────┘
+```
+
+---
+
+## 3. 数据模型
+
+### 3.1 长期记忆表（`long_term_memory`）
+
+```sql
+CREATE TABLE long_term_memory (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    memory_type     TEXT    NOT NULL,   -- 'project', 'decision', 'pattern', 'preference', 'skill', 'context_chunk'
+    content         TEXT    NOT NULL,   -- 记忆内容（可被模型阅读的文本）
+    summary         TEXT,              -- 可选摘要（用于快速展示和检索）
+    importance      REAL   NOT NULL DEFAULT 5.0,  -- 重要性分数 [0.0, 10.0]
+    confidence      REAL   NOT NULL DEFAULT 0.5,  -- 置信度 [0.0, 1.0]，来源可靠性
+    source          TEXT   NOT NULL,   -- 'context_slice', 'decision', 'task_thread', 'user_confirmed', 'model_inferred'
+    source_id       TEXT,              -- 引用来源记录 ID（如 "slice:42"）
+    tags            TEXT,              -- JSON 数组，如 ["rust", "sqlite", "performance"]
+    window_titles   TEXT,              -- JSON 数组，关联的窗口标题
+    thread_id       INTEGER,          -- 关联的 task_thread（可选）
+    last_accessed   TEXT   NOT NULL,   -- ISO8601，最后访问时间
+    last_decay      TEXT   NOT NULL,   -- ISO8601，上次衰减时间
+    created_at      TEXT   NOT NULL,   -- ISO8601，创建时间
+    decay_count     INTEGER NOT NULL DEFAULT 0,   -- 已衰减次数
+    access_count    INTEGER NOT NULL DEFAULT 0,   -- 被检索次数
+    metadata_json   TEXT,              -- 扩展元数据（JSON）
+    embedding       BLOB,              -- 可选向量（供语义检索用）
+    is_pinned       INTEGER NOT NULL DEFAULT 0,   -- 是否被钉住（永不衰减）
+    is_active       INTEGER NOT NULL DEFAULT 1    -- 是否激活（软删除用）
+);
+
+CREATE INDEX idx_ltm_memory_type   ON long_term_memory(memory_type);
+CREATE INDEX idx_ltm_importance    ON long_term_memory(importance DESC);
+CREATE INDEX idx_ltm_source        ON long_term_memory(source);
+CREATE INDEX idx_ltm_thread_id     ON long_term_memory(thread_id);
+CREATE INDEX idx_ltm_last_accessed ON long_term_memory(last_accessed DESC);
+CREATE INDEX idx_ltm_is_active     ON long_term_memory(is_active);
+```
+
+### 3.2 衰减历史表（`ltm_decay_log`）
+
+记录每次衰减操作，用于分析和调参：
+
+```sql
+CREATE TABLE ltm_decay_log (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    executed_at  TEXT NOT NULL,
+    records_affected  INTEGER NOT NULL,
+    records_deleted   INTEGER NOT NULL,
+    decay_rate        REAL NOT NULL,
+    strategy_version  TEXT NOT NULL
+);
+```
+
+### 3.3 记忆类型说明
+
+| memory_type | 含义 | 典型来源 | 初始 importance |
+|------------|------|---------|---------------|
+| `project` | 项目级上下文（项目名称、目标、约束） | `task_threads` 提升 | 8.0 |
+| `decision` | 重要决策及理由 | `decision_memory` 提升 | 7.0 |
+| `pattern` | 行为模式（反复出现的操作序列） | `context_slice` 聚合 | 5.0 |
+| `preference` | 用户偏好（已确认的） | 用户确认 | 9.0 |
+| `skill` | 技能/流程 | `skill_memory` | 6.0 |
+| `context_chunk` | 上下文片段摘要 | `context_slice` 降级保留 | 3.0 |
+
+---
+
+## 4. 核心模块设计
+
+### 4.1 LTM Store（`ltm_store.rs`）
+
+**职责**：CRUD 操作、重要性管理和激活状态控制。
+
+**关键 API**：
+
+```rust
+pub struct LtmStore<'a>(&'a Database);
+
+// 写入
+fn insert(&self, record: &LtmRecord) -> Result<i64, LtmError>;
+fn update_importance(&self, id: i64, delta: f32) -> Result<(), LtmError>;
+fn pin(&self, id: i64) -> Result<(), LtmError>;
+fn unpin(&self, id: i64) -> Result<(), LtmError>;
+fn soft_delete(&self, id: i64) -> Result<(), LtmError>;
+
+// 读取
+fn get_by_id(&self, id: i64) -> Result<Option<LtmRecord>, LtmError>;
+fn get_active(&self, limit: usize) -> Result<Vec<LtmRecord>, LtmError>;
+fn get_top_importance(&self, limit: usize) -> Result<Vec<LtmRecord>, LtmError>;
+fn get_by_thread(&self, thread_id: i64) -> Result<Vec<LtmRecord>, LtmError>;
+fn get_by_tag(&self, tag: &str) -> Result<Vec<LtmRecord>, LtmError>;
+fn get_by_type(&self, memory_type: &str) -> Result<Vec<LtmRecord>, LtmError>;
+
+// 统计
+fn count_active(&self) -> Result<i64, LtmError>;
+fn count_by_type(&self, memory_type: &str) -> Result<i64, LtmError>;
+```
+
+**重要性分数操作规则**：
+- 每次成功被检索并被模型利用（access_count++），importance += 0.1，上限 10.0
+- 每次衰减周期：importance -= decay_rate（默认 0.15）
+- 用户确认的记忆：importance 不衰减（is_pinned = 1）
+- importance < 0.5 时触发软删除（is_active = 0）
+
+### 4.2 LTM Import（`ltm_import.rs`）
+
+**职责**：从现有模块中选择性地将数据提升为长期记忆。
+
+**提升策略（Promote Rules）**：
+
+| 来源 | 条件 | 目标 importance | 目标 type |
+|------|------|---------------|---------|
+| `context_slice` | `evidence_source == "imported"` AND (judgment_counts 包含 MODEL_ERROR OR ABSTAIN 次数 > 3) | 5.0 | `pattern` |
+| `context_slice` | 窗口标题出现频率 top 3（同一标题 > 5 次） | 6.0 | `context_chunk` |
+| `decision_memory` | `evidence_source == "seed"` OR `evidence_source == "imported"` | 7.0 | `decision` |
+| `task_threads` | `current_state` 非空 AND 存在 `open_questions` | 8.0 | `project` |
+| `skill_memory` | `last_used_at` 在最近 7 天内 | 6.0 | `skill` |
+
+**API**：
+
+```rust
+pub struct LtmImporter<'a> {
+    db: &'a Database,
+    store: LtmStore<'a>,
+    slices_store: ContextSlicesStore<'a>,
+    decisions_store: DecisionMemoryStore<'a>,
+    threads_store: TaskThreadsStore<'a>,
+    skills_store: SkillMemoryStore<'a>,
+}
+
+/// 执行一次完整的导入流程，返回导入记录数量
+pub fn run_import_cycle(&self) -> Result<ImportStats, LtmError>;
+
+pub struct ImportStats {
+    pub context_chunks_imported: usize,
+    pub decisions_imported: usize,
+    pub projects_imported: usize,
+    pub skills_imported: usize,
+    pub skipped_already_present: usize,
+}
+```
+
+**幂等性保证**：
+- 通过 `source_id` 字段（格式如 `"slice:42"`）做去重
+- 已在 LTM 中的记录不会被重复导入，除非 `importance` 需要更新
+
+### 4.3 LTM Recall（`ltm_recall.rs`）
+
+**职责**：提供被动检索和主动回忆两个入口。
+
+#### 被动检索（Passive Recall）
+
+被 `SearchEngine` 集成，作为检索结果的一部分：
+
+```rust
+/// 给定一个 SearchQuery，补充 LTM 中的相关记忆
+pub fn enrich_with_ltm(
+    &self,
+    query: &SearchQuery,
+    existing_results: &mut Vec<SearchResult>,
+) -> Result<LtmEnrichment, LtmError>;
+
+pub struct LtmEnrichment {
+    pub ltm_records: Vec<LtmRecord>,       // 直接相关的 LTM 记录
+    pub related_thread_id: Option<i64>,    // 检测到关联的项目 thread
+    pub suggested_tags: Vec<String>,       // 从 LTM 中推断的标签
+}
+```
+
+检索逻辑：
+1. 用 `query.text` 在 `long_term_memory.content` 上做 FTS 匹配
+2. 用 `query.text` 生成 embedding 做向量相似度搜索
+3. 合并结果，按 importance 加权排序
+4. 如果 `query.thread_id` 存在，返回该 thread 关联的所有 LTM 记录
+
+#### 主动回忆（Active Recall）
+
+定期（如每次 session 开始时）将高重要性记忆注入 prompt context：
+
+```rust
+/// 构建主动回忆上下文
+pub fn build_active_recall_context(
+    &self,
+    config: &LtmRecallConfig,
+) -> Result<ActiveRecallContext, LtmError>;
+
+pub struct LtmRecallConfig {
+    pub max_records: usize,          // 最多注入记录数（默认 5）
+    pub min_importance: f32,         // 最低 importance 阈值（默认 6.0）
+    pub include_pinned: bool,        // 是否包含 pinned 记录（默认 true）
+    pub preferred_types: Vec<String>, // 优先包含的记忆类型（默认 ["project", "decision", "preference"]）
+}
+
+pub struct ActiveRecallContext {
+    /// 注入 prompt 的记忆文本块
+    pub memory_blocks: Vec<MemoryBlock>,
+    /// 本次 recall 命中率（检索到的记录数）
+    pub hit_count: usize,
+}
+
+pub struct MemoryBlock {
+    pub memory_type: String,
+    pub content: String,
+    pub importance: f32,
+    pub source: String,
+    pub age_hint: String,  // 如 "2 周前" 或 "刚刚"
+}
+```
+
+**Age Hint 计算规则**：
+```
+created_at 距离现在 < 1 小时  → "刚刚"
+< 24 小时                    → "今天"
+< 7 天                      → "N 天前"
+< 30 天                     → "N 周前"
+otherwise                   → "N 个月前"
+```
+
+### 4.4 LTM Decay（`ltm_decay.rs`）
+
+**职责**：管理记忆衰减和清理。
+
+**衰减策略（Decay Strategy）**：
+
+```rust
+pub struct DecayStrategy {
+    /// 基础衰减率（每次衰减周期 importance 减少的量）
+    pub base_decay_rate: f32,
+    /// 衰减周期（秒），默认 86400（1 天）
+    pub decay_interval_secs: u64,
+    /// 删除阈值，importance < 此值时软删除
+    pub delete_threshold: f32,
+    /// 每次衰减操作的最大影响记录数（防止一次操作过重）
+    pub max_records_per_decay: usize,
+    /// 是否启用基于访问频率的自适应衰减
+    pub use_access_frequency: bool,
+}
+```
+
+**衰减算法**：
+
+```
+对每条 is_active=1 AND is_pinned=0 的记录：
+    access_weight = log(1 + access_count) / log(1 + max_access_count)
+    effective_decay = base_decay_rate * (1.0 - 0.3 * access_weight)
+    new_importance = importance - effective_decay
+    if new_importance < delete_threshold:
+        soft_delete(id)
+    else:
+        update_importance(id, new_importance)
+        update last_decay = now
+        decay_count++
+```
+
+**调度**：
+
+- **启动时**：如果距上次衰减 > 24 小时，执行一次衰减
+- **Session 结束时**：如果距上次衰减 > 配置的衰减周期，执行一次衰减
+- **后台任务**：可选择启动一个定时任务（每小时检查一次）
+
+### 4.5 LTM Config（`ltm_config.rs`）
+
+**配置项**（存储在 `config.json` 或独立配置文件）：
+
+```json
+{
+  "ltm": {
+    "enabled": true,
+    "import": {
+      "context_slice_threshold_hours": 48,
+      "decision_auto_promote": true,
+      "skill_refresh_days": 7
+    },
+    "recall": {
+      "active_recall_on_session_start": true,
+      "max_records_per_recall": 5,
+      "min_importance_threshold": 6.0
+    },
+    "decay": {
+      "enabled": true,
+      "base_decay_rate": 0.15,
+      "decay_interval_hours": 24,
+      "delete_threshold": 0.5,
+      "max_records_per_decay": 500
+    },
+    "storage": {
+      "max_active_records": 10000,
+      "auto_cleanup_on_threshold": true
+    }
+  }
+}
+```
+
+---
+
+## 5. 集成方案
+
+### 5.1 与现有 SearchEngine 的集成
+
+在 `SearchEngine::search()` 的结果合并阶段，添加 LTM 补充：
+
+```rust
+// 在 search.rs 的 search() 方法中，结果合并之后添加：
+if self.ltm_store.is_some() {
+    let ltm_recall = LtmRecall::new(self.db, self.ltm_store.as_ref().unwrap());
+    let enrichment = ltm_recall.enrich_with_ltm(query, &mut all_events)?;
+    // 将 LTM 记录转换为 SearchResult 格式混入结果
+    for record in enrichment.ltm_records {
+        all_events.push(record.into_search_result());
+    }
+}
+```
+
+### 5.2 与 `ReminderContext` 的集成
+
+在 `MemoryCompetition::build_reminder_context()` 中，添加 LTM 层作为第 6 个信息来源：
+
+```rust
+// 在 competition.rs 的 build_reminder_context 中添加：
+// 6. LTM records (project, decision, preference)
+let ltm_store = LtmStore::new(self.db);
+if let Ok(ltm_records) = ltm_store.get_top_importance(5) {
+    for record in ltm_records {
+        evidence_refs.push(EvidenceRef {
+            source: record.source,
+            memory_type: format!("ltm_{}", record.memory_type),
+            id: record.id.unwrap_or(0),
+            content_snippet: record.content.chars().take(200).collect(),
+            timestamp: Some(record.created_at),
+        });
+    }
+}
+```
+
+### 5.3 与 Session 生命周期的集成
+
+在 `main_loop.rs` 的 Session 启动和结束处添加钩子：
+
+```rust
+// Session 开始时（main_loop.rs start_main_loop）
+let ltm_recall = LtmRecall::new(db, ltm_store);
+if config.ltm_enabled {
+    let recall_ctx = ltm_recall.build_active_recall_context(&config.ltm_recall)?;
+    // 将 recall_ctx.memory_blocks 注入 prompt context
+    inject_ltm_to_context(&mut prompt_context, recall_ctx);
+}
+
+// Session 结束时
+if config.ltm_enabled {
+    ltm_importer.run_import_cycle()?;
+    decay_engine.run_if_due()?;
+}
+```
+
+---
+
+## 6. 向后兼容与迁移
+
+### 6.1 数据库迁移
+
+通过 `schema.rs` 添加新表，不修改现有表结构：
+
+```rust
+pub fn run_migrations(conn: &Connection) -> Result<(), MigrationError> {
+    // 现有迁移...
+    // 新增 LTM 迁移
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS long_term_memory (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            memory_type     TEXT    NOT NULL,
+            content         TEXT    NOT NULL,
+            -- ... 完整字段如上
+        )",
+        [],
+    )?;
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS ltm_decay_log (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            executed_at  TEXT NOT NULL,
+            records_affected  INTEGER NOT NULL,
+            records_deleted   INTEGER NOT NULL,
+            decay_rate        REAL NOT NULL,
+            strategy_version  TEXT NOT NULL
+        )",
+        [],
+    )?;
+    Ok(())
+}
+```
+
+### 6.2 向后兼容
+
+- 如果 `cozmio_memory` 在没有 LTM 模块的情况下编译，所有现有功能保持不变
+- LTM 模块默认为 disabled（`config.ltm.enabled = false`），需要用户显式开启
+- 现有 `SearchEngine` 不需要修改，可以在外部选择是否使用 LTM 补充
+
+---
+
+## 7. 验证计划
+
+### 7.1 单元测试
+
+| 测试项 | 验证方法 |
+|--------|---------|
+| LTM 插入和去重 | 插入两条相同 `source_id` 的记录，验证只有一条存在 |
+| 重要性衰减 | 创建记录，等待衰减，验证 importance 下降 |
+| 软删除阈值 | 将 importance 降至 threshold 以下，验证 `is_active = 0` |
+| Pinned 记录不衰减 | 将记录 pin 住，执行衰减，验证 importance 不变 |
+| Import 幂等性 | 对同一 `context_slice` 执行两次 import，验证只有一条 LTM 记录 |
+| Active recall 排序 | 创建多条不同 importance 的记录，验证 recall 结果按 importance 降序 |
+
+### 7.2 集成测试
+
+| 测试项 | 验证方法 |
+|--------|---------|
+| Import 从 context_slice 提升 | 插入 5 个 `imported` 类型 slice，执行 import，验证 LTM 中有对应记录 |
+| Active recall 注入 prompt | mock prompt context，执行 recall，验证 memory_blocks 被正确注入 |
+| 与 SearchEngine 集成 | 在有 LTM 记录的情况下执行 search，验证结果包含 LTM 补充 |
+
+### 7.3 回归测试
+
+- 现有 `cozmio_memory` 的所有单元测试继续通过
+- `ReminderContext` 的构建结果在有无 LTM 两种情况下保持一致（LTM 作为额外补充，不改变原有逻辑）
+
+---
+
+## 8. 实施路线图
+
+### Phase 1: 基础设施（1-2 天）
+- [ ] 新建 `cozmio_memory/src/ltm_store.rs`
+- [ ] 新建 `cozmio_memory/src/ltm_config.rs`
+- [ ] 添加数据库迁移
+- [ ] 实现 LTM Store 的 CRUD API
+
+### Phase 2: 导入与衰减（1-2 天）
+- [ ] 新建 `cozmio_memory/src/ltm_import.rs`
+- [ ] 新建 `cozmio_memory/src/ltm_decay.rs`
+- [ ] 实现 Import 提升策略
+- [ ] 实现 Decay 调度逻辑
+
+### Phase 3: 检索集成（1 天）
+- [ ] 新建 `cozmio_memory/src/ltm_recall.rs`
+- [ ] 在 `SearchEngine` 中集成 LTM 补充
+- [ ] 在 `ReminderContext` 中添加 LTM 来源
+- [ ] 在 `main_loop.rs` 添加 session 生命周期钩子
+
+### Phase 4: 配置与调优（0.5 天）
+- [ ] 配置项读写支持
+- [ ] 调参：根据实际数据调整衰减率、阈值
+- [ ] 文档
+
+---
+
+## 9. 风险与限制
+
+1. **存储膨胀**：如果衰减策略配置不当，`long_term_memory` 表可能持续增长。需要监控 `max_active_records` 配置并配合 `auto_cleanup`。
+2. **导入环路**：如果 Import 策略过于激进，可能将所有 slice 都变成 LTM 记录，失去了衰减的意义。需要在 Import 时检查 existing LTM importance 是否已经足够高。
+3. **Prompt 长度污染**：Active recall 如果每次都注入过多记忆，可能导致 prompt 超出模型上下文限制。需要严格控制 `max_records_per_recall`。
+4. **向量检索依赖**：如果启用 LTM 记录的 embedding 向量存储，需要依赖 `embed_provider`，当前 `cozmio_memory` 有 `embed_disabled` 和 `embed_fastreembed` 两个实现，需要确保 LTM 向量兼容。
+5. **多线程安全**：`LtmStore` 依赖 `Database` 的锁机制，与现有 `MemoryEventsStore` 等模块一致，不引入新的并发风险。

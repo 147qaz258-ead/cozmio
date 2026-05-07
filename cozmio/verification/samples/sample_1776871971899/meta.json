@@ -1,0 +1,13 @@
+{
+  "hwnd": 327908,
+  "is_foreground": true,
+  "is_visible": true,
+  "process_name": "PID:8824",
+  "rect": {
+    "height": 878,
+    "width": 1550,
+    "x": -7,
+    "y": -7
+  },
+  "title": ".ai_completion - 文件资源管理器"
+}

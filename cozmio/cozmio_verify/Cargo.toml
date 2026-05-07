@@ -1,0 +1,12 @@
+[package]
+name = "cozmio_verify"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cozmio_core = { path = "../cozmio_core" }
+cozmio_model = { path = "../cozmio_model" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+base64 = "0.22"

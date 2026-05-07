@@ -1,0 +1,17 @@
+{
+  "expectation_1": {
+    "description": "Output addresses the question about agent being too reactive/late",
+    "grade": "PASS",
+    "notes": "The entire document is centered on diagnosing why the agent feels 'always late'. The title explicitly states 'Why Always Late and How to Fix It'. It covers root causes, architectural problems, and specific fixes."
+  },
+  "expectation_2": {
+    "description": "Identifies root causes in architecture (polling interval, reactive call, toast latency)",
+    "grade": "PASS",
+    "notes": "Five concrete problems are identified: (1) Polling interval creates mandatory delay floor, (2) Window change detection skips first appearance, (3) Model call is reactive not predictive, (4) Toast notifications are the slowest confirmation channel, (5) No context window for anticipatory inference. Each is supported by code references."
+  },
+  "expectation_3": {
+    "description": "Does NOT use 'Agent design reading' format",
+    "grade": "PASS",
+    "notes": "The output uses a technical diagnosis format with sections: Root Cause Diagnosis, The Five Fundamental Problems, The Architectural Insight, Specific Architectural Changes, What the Current Architecture Gets Right, Priority Ranking, Summary. This is not the 'Agent design reading' format (no Executive Summary, Key Findings, References sections)."
+  }
+}

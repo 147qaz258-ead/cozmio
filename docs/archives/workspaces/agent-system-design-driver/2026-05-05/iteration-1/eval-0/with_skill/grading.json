@@ -1,0 +1,19 @@
+{
+  "expectation_1": {
+    "criterion": "Output answers the 4 design questions (what to remember, when to write, when to retrieve, how it affects model judgment)",
+    "grade": "pass",
+    "notes": "Lines 69-77 contain an explicit table with all 4 questions answered. Q1 'What to remember' → cross-session distillation needed. Q2 'When to write' → semantic compression step missing. Q3 'When to retrieve' → semantic similarity retrieval missing. Q4 'How it affects model judgment' → Via ReminderContext but only sees 2 hours. The memory lifecycle (lines 82-138) and agent shape section (lines 141-169) further elaborate all four questions."
+  },
+  "expectation_2": {
+    "criterion": "Output identifies weakest layer",
+    "grade": "pass",
+    "notes": "Lines 59-62 explicitly state: 'Current weakest layer: The retrieval and synthesis layer. The system writes a lot but does not summarize, distill, or prioritize across sessions. The 2-hour window for context slices is too short for cross-session memory.' This is clear and specific."
+  },
+  "expectation_3": {
+    "criterion": "Output produces a concrete design artifact (not a database schema)",
+    "grade": "pass",
+    "notes": "The primary design artifact is the memory lifecycle ('observe → candidate memory → confidence scoring → long-term write' with 6 detailed steps, lines 82-138). Secondary artifacts include the agent shape (lines 141-169) and implementation sequence (lines 290-317). The database schema (lines 176-196) is explicitly framed as secondary to the lifecycle, with a stated principle that 'the first design artifact should be the memory lifecycle, not the database schema' (line 78)."
+  },
+  "overall": "pass",
+  "summary": "All three expectations met. The document explicitly addresses all four design questions in a dedicated table and elaborates them through the memory lifecycle. It clearly identifies retrieval/synthesis as the weakest layer and provides the memory lifecycle as the primary design artifact, with the schema treated as implementation detail."
+}

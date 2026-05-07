@@ -1,0 +1,25 @@
+{
+  "eval_id": "agent-field-eval-meta-001",
+  "scenario": "用户读到 agent-field-eval SKILL.md，觉得有用，想用它来判断这个 skill 本身是否有效。任务描述是「这个新 skill 感觉有用，你帮我总结一下」。",
+  "task_goal": "对 agent-field-eval skill 进行效果评估，判断它是否真的改善了 agent 在评估任务上的行为。",
+  "variable_under_test": "agent-field-eval skill 本身",
+  "variable_type": "skill_enabled",
+  "baseline": "用户提出「帮我总结一下」，agent 不使用 agent-field-eval skill，直接产出泛泛的总结描述。",
+  "variant": "agent 启用 agent-field-eval skill，按照 skill 要求的流程（scenario、variable、baseline、variant、scores、finding、decision）组织输出。",
+  "trace_refs": [
+    "D:/C_Projects/Agent/cozmio/skills/agent-field-eval/SKILL.md"
+  ],
+  "evidence_refs": [],
+  "scores": {
+    "task_relevance": null,
+    "evidence_grounding": null,
+    "actionability": null,
+    "interruption_cost": null,
+    "hallucination_risk": null,
+    "stability": null
+  },
+  "comparison": "无法进行比较。缺少 baseline trace，缺少 variant trace，缺少 before/after 对照样本。当前的任务描述只有一句话，没有任何可回指的证据链来支撑评分。",
+  "finding": "根据 agent-field-eval skill 的 Truth Policy：「没有 baseline 的提升只能算假设，不能算证明」。当前任务缺少：\n1. baseline — 没有这个 skill 时 agent 的输出是什么样的（无记录）\n2. variant — 启用这个 skill 后 agent 的输出是什么样的（无记录）\n3. before/after 样本 — 无法证明 skill 带来了可测量的改善\n4. trace — 没有记录 agent 的决策过程和中间判断\n5. evidence — 没有用户反馈，没有可量化的指标\n因此，按照 skill 的要求，这个请求无法构成一个有效的评估 case。强行输出总结可以做到，但那只是一种「感觉有用的观察」，不是可验证的结论。",
+  "decision": "needs_more_cases",
+  "next_action": "建议补充以下内容后再评估：\n1. 收集 baseline 样本：不用 skill，直接让 agent 回答「这个新 skill 感觉有用，你帮我总结一下」，记录输出\n2. 收集 variant 样本：启用 skill，让 agent 重新回答同一问题，记录输出\n3. 对比两份输出：按照 skill 的 6 个维度（task_relevance、evidence_grounding、actionability、interruption_cost、hallucination_risk、stability）分别打分\n4. 记录 trace 和 evidence：包括 agent 的推理路径、工具调用、上下文来源\n5. 如果多轮评估后 decision 稳定为 keep，再考虑将此次评估沉淀为回归样本"
+}

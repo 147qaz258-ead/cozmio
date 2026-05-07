@@ -1,0 +1,35 @@
+{
+  "eval_id": "agent-qualify-to-remind-iteration-1-eval-1",
+  "scenario": "桌面 AI 监控系统（类似 Cozmio）：agent 持续监控用户前台窗口，通过视觉模型分析截图和窗口元信息，对每个窗口做出 CONTINUE（值得介入）或 ABSTAIN（不适合介入）的二元判断，并据此决定是否向用户发送主动提醒。用户暴露于两种风险：假阳性（不该提醒时打扰了用户）和假阴性（该提醒时没提醒）。问题是：agent 的介入资格由什么决定，如何系统测试这个资格？",
+  "task_goal": "建立一套可复现的评估框架，用于判断 agent 在主动提醒场景下何时有资格发出提醒。目标不是优化具体模型输出，而是验证「模型对自身介入资格的判断」是否可靠、可校准、有足够的证据支撑。",
+  "variable_under_test": "Agent 主动提醒触发资格的判定框架。具体指：agent 做出 CONTINUE 判断时，必须满足什么evidence条件才构成「有资格提醒」的充分集合？",
+  "variable_type": "eval_framework（评估框架本身，而非某个具体参数）",
+  "baseline": "当前系统的 CONTINUE/ABSTAIN 判断完全依赖 prompt 中的三条启发式规则（用户当前在做什么、介入能解决什么、用户确认后怎么帮），没有独立于模型输出的验证机制，没有系统化的样本集，没有对判断质量的量化评分。没有 baseline 对照，任何「改进」都无法归因。",
+  "variant": "引入结构化评估框架：\n1. 固定样本集（正例：值得提醒的窗口截图；负例：不应该提醒的场景）\n2. 6维评分（task_relevance / evidence_grounding / actionability / interruption_cost / hallucination_risk / stability）\n3. 人工 ground truth 标注（人类判断该窗口是否应该被提醒）\n4. 量化阈值（precision >= 0.8, recall >= 0.6 作为合格线）\n5. 回归样本集（典型正例和负例，每次改动必须重跑）",
+  "trace_refs": [
+    "cozmio/src-tauri/src/model_client.rs（模型输出格式：MODE + REASON + USER_HOW）",
+    "cozmio/src-tauri/src/executor.rs（ExecutionResult 路由逻辑：Confirmed/Skipped/Executed/Notified）",
+    "cozmio/src-tauri/src/main_loop.rs（主循环：capture -> model_call -> route -> notification -> emit_state_update）",
+    "cozmio/src-tauri/src/types.rs（TraceId, NotificationPending, ConfirmToken 追溯机制）",
+    "cozmio/src-tauri/src/logging.rs（ActionRecord 全量日志，包含 judgment/reason/grounds/user_feedback）"
+  ],
+  "evidence_refs": [
+    "model_client.rs build_prompt: prompt 要求模型先回答三个问题，任何一个回答不上来就 ABSTAIN——这是当前唯一的「资格判定规则」，但没有外部验证",
+    "model_client.rs parse_response: 严格解析 MODE:/REASON:/USER_HOW: 三段式输出，缺少任一字段即报错——这保证了输出格式，但未保证内容质量",
+    "main_loop.rs has_changed 检测：window_change_detection=true 时只有窗口标题变化才触发模型调用——这是第一层过滤，但与模型判断质量无关",
+    "main_loop.rs 噪声过滤：cozmio.exe 自身、cozmio 相关 cmd/powershell 窗口直接跳过——这些是白名单过滤，不经过模型判断",
+    "executor.rs route: CONTINUE -> Confirmed（确认后等待用户操作），ABSTAIN -> Skipped——执行层不验证模型判断的证据质量"
+  ],
+  "scores": {
+    "task_relevance": "5/5 —— 问题直接对应 Cozmio agent 的核心价值：主动判断何时适合打扰用户，这是整个系统存在的根本前提",
+    "evidence_grounding": "2/5 —— 当前系统没有任何外部 ground truth。模型输出依赖 prompt 规则，但 prompt 规则本身从未被系统性验证。没有样本集，没有人工标注，evidence 仅来自模型自身输出，无法判断是否幻觉或过度扩展",
+    "actionability": "4/5 —— eval 框架本身清晰可操作（定义场景 -> 找变量 -> 建 baseline/variant -> 捕获 trace -> 评分 -> 比较 -> 决策），但实际执行需要人力投入：收集样本、人工标注、评分汇总，这部分目前没有自动化",
+    "interruption_cost": "3/5 —— 从系统设计可见干预成本设计考虑不完整：ConfirmationPending 超时 60s 自动过期（main_loop.rs 第 62-81 行），但这只是时序成本，没有对「假阳性打扰」的量化度量，没有用户反馈收集机制（user_feedback 字段存在于 ActionRecord 但从未被写入）",
+    "hallucination_risk": "2/5 —— 高风险。prompt 要求「不要补充截图中看不见的事实」「不要输出世界标签」，但没有任何机制验证模型是否遵守。模型可能把普通 Excel 窗口识别为「高价值协作机会」，没有任何独立的外部检查",
+    "stability": "2/5 —— 没有回归样本集，没有多次运行对比，相同的窗口在不同时间可能被判断为不同结果。window_change_detection 阈值（窗口标题变化）是一个粗糙的 proxy，无法捕捉窗口内容的语义变化"
+  },
+  "comparison": "当前没有 baseline（无 eval 框架状态）vs 建议 variant（有 eval 框架）。两者在 task_relevance（都是 5）上无差异，均直接对应系统核心价值。核心差异在于 evidence_grounding（2 vs 2，但 variant 有明确改进路径）、hallucination_risk（2 vs 2，但 variant 有防御机制）、stability（2 vs 2，但 variant 有回归集）。当前系统的本质问题是：没有任何独立于模型自身的验证层，模型的「资格判断」从未被人类或自动化标准校准过。variant 的真正价值不是消除这些问题，而是让这些问题可见、可度量、可改进。",
+  "finding": "1. 这个问题无法在单次 eval 中完成验证——它是一个框架建设任务，需要多轮样本积累和校准。\n2. 核心测试对象是「模型的判断质量」，不是「系统是否工作」——这是产品类型文档中定义的「模型输出验证型」任务，而非「传统软件实现型」。\n3. 当前系统最大的 blind spot：prompt 中的三条规则（「用户做什么」「介入能解决什么」「确认后怎么帮」）没有任何外部验证机制，模型可能在 REASON 中写出任何内容，只要格式正确就能通过。\n4. 最关键的改进方向：建立人工标注的样本集（至少 20 个正例 + 20 个负例），让人类判断每个窗口是否值得提醒，然后用这个作为 ground truth 评估模型的准确率。\n5. 测试方法必须分两层：Layer 1（可自动化）：给定固定截图和窗口元信息，模型输出格式是否正确、字段是否完整；Layer 2（需要人工）：给定同样输入，人类标注员判断模型的 CONTINUE/ABSTAIN 决策是否正确。",
+  "decision": "needs_more_cases",
+  "next_action": "短期（1-2 轮迭代）：（1）从现有 action_log.jsonl 中提取 20 个历史 CONTINUE 案例，逐个人工标注「该窗口是否真的值得提醒」，计算 precision/recall 基准线；（2）补充 10 个典型 ABSTAIN 场景截图作为负例集，验证召回率。\n中期（3-5 轮迭代）：（1）建立回归样本集（regression set），每次改 prompt 或模型后重跑评分，确保 precision >= 0.8、recall >= 0.6 的合格线；（2）引入 user_feedback 收集机制，让用户在确认/拒绝每次提醒后实际写入反馈，用真实数据校准阈值。\n当前最大风险：无法在离线环境下模拟「什么时候该提醒」的 ground truth，必须依赖人工标注和真实用户反馈，这两者都需要人力投入，不是纯技术问题。"
+}

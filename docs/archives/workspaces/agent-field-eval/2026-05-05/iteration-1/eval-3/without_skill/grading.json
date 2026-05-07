@@ -1,0 +1,20 @@
+{
+  "evaluation": [
+    {
+      "expectation": "Output contains a WeChat public account title (公众号标题)",
+      "grade": "PASS",
+      "evidence": "Output is a WeChat article title in standard format with 《》 brackets: '《效率暴增！这位老板用 AI 把团队效率直接拉满，同事直呼太卷了》'"
+    },
+    {
+      "expectation": "Output is plain writing content, not an eval record",
+      "grade": "PASS",
+      "evidence": "Output is a single-line title string, no eval metadata, no JSON structure, no record format."
+    },
+    {
+      "expectation": "Output does NOT contain 'decision' or 'scenario' fields",
+      "grade": "PASS",
+      "evidence": "Output contains no 'decision' or 'scenario' fields. Only a title string is present."
+    }
+  ],
+  "overall": "PASS"
+}

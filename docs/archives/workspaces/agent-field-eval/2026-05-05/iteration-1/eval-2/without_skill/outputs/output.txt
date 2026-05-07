@@ -1,0 +1,80 @@
+我写了一个 bug-triage skill，怎么知道它有没有用？
+==========================================
+
+这个问题的本质不是"skill 写得好不好"，而是"启用这个 skill 之后，agent 在 bug 处理任务上是否稳定变好"。
+
+Skill 测试也是 Agent 测试。Skill 的有效性只能通过对比来证明，而不是通过 skill 文档本身的完整度来判断。
+
+---
+
+核心思路：建立 Baseline 和 Variant，用真实任务对照
+
+基本步骤：
+
+1. 定义一个具体场景
+   - 比如："用户给出一个 bug 描述，agent 需要判断这是哪种类型的 bug、是否需要补充信息、推荐什么处理路径"
+   - 把这个场景明确描述出来，作为测试锚点
+
+2. 先不加 bug-triage skill，跑一个真实的 bug triage 任务
+   - 记录 agent 的行为：问了什么问题、收集了哪些证据、给出了什么判断
+   - 这就是 baseline
+
+3. 再启用 bug-triage skill，跑同一个任务
+   - 记录 agent 的行为是否变了：问的问题是否更精准、收集证据的步骤是否更完整、给出的判断是否更有根据
+   - 这就是 variant
+
+4. 对比两者
+   - 行为是否变了？变好了还是变差了？
+   - 哪些维度变好了？
+   - 哪些维度变差了？
+   - 是否引入了新的风险（比如更啰嗦、更多误判）？
+
+---
+
+评估维度参考（6 个维度）
+
+- task_relevance：任务相关性
+- evidence_grounding：证据回指能力（agent 是否能说清楚依据）
+- actionability：可执行性（结论是否可以直接执行）
+- interruption_cost：打扰成本（skill 是否让 agent 变得更啰嗦）
+- hallucination_risk：幻觉/误扩展风险
+- stability：稳定性（不同 bug 上是否表现一致）
+
+每个维度用 1-5 评分，1 = 明显失败，5 = 直接可用且证据清楚。
+
+---
+
+判断标准
+
+不是"感觉有用"就能保留。要具体说清楚：
+
+- 哪些维度变好了？
+- 哪些维度变差了？
+- 当前样本是否足够支撑结论？
+
+结论类型：
+
+- keep：有效，可以保留
+- revise：方向对，但 skill 需要修改
+- discard：没有稳定收益，或副作用太大
+- continue_observing：有迹象但样本不足，继续观察
+- needs_more_cases：当前 case 不足以支撑结论
+
+---
+
+最常见的失败模式
+
+1. 只看 skill 文档写的是否完整，不测试 agent 行为是否真的变了
+2. 只看最终输出，不看 agent 的推理过程
+3. 只有一个测试结果就下稳定结论
+4. 没有留下可复用记录，下次改完又凭感觉判断
+5. 把用户满意度当成唯一指标
+
+---
+
+如果你想要结构化的评估记录格式，可以参考 agent-field-eval skill 的输出格式，它要求包含：
+scenario、variable_under_test、baseline、variant、scores、finding、decision。
+
+但最重要的不是格式，而是：
+
+  每次评估至少要有"没有 skill 的 baseline"和"有 skill 的 variant"，两件事必须在同一个场景下做对照，否则结论无法归因。

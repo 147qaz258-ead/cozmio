@@ -1,0 +1,16 @@
+{
+  "expectation_1": {
+    "description": "Output addresses the question about designing a long-term memory module",
+    "grade": "PASS",
+    "notes": "The output is entirely focused on designing a Long-Term Memory (LTM) module for Cozmio. It includes: (1) analysis of existing memory subsystems (MemoryEvent, ContextSlice, TaskThread, DecisionMemory, SkillMemory, SearchEngine) and their limitations; (2) clear design goals (persistence, retrievability, decay mechanism, source tracking, minimal intrusion); (3) comprehensive architectural design across 9 sections covering module hierarchy, data models, core module APIs, integration plans, validation, and implementation roadmap."
+  },
+  "expectation_2": {
+    "description": "Output provides architectural recommendations",
+    "grade": "PASS",
+    "notes": "The document provides detailed architectural recommendations including: (1) a layered module architecture with ltm_store, ltm_import, ltm_recall, ltm_decay, and ltm_config sub-modules; (2) complete SQL schema with indexes for long_term_memory and ltm_decay_log tables; (3) Rust API designs for all core modules; (4) data flow diagrams for session start/end lifecycle; (5) integration points with existing SearchEngine, ReminderContext, and main_loop; (6) decay algorithm with access-frequency-weighted effective decay rate; (7) a phased implementation roadmap."
+  },
+  "expectation_3": {
+    "description": "Output does NOT use 'Agent design reading' format",
+    "grade": "PASS",
+    "notes": "The output is a formal technical design document written as a structured specification in Chinese. It uses section headers (## 1. 背景与目标, ## 2. 整体架构, etc.), tables for schema and comparison, code blocks for SQL/Rust API designs, and follows conventional architectural design document conventions. There is no use of an 'Agent design reading' format (e.g., no dialogue-style exchanges, no agent/evaluator persona framing, no reading comprehension-style Q&A structure)."
+}

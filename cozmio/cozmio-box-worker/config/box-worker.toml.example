@@ -1,0 +1,12 @@
+# Cozmio Box Worker Configuration
+# Copy this file to /opt/cozmio/config/box-worker.toml and update values
+
+# Worker identification
+worker_id = "box-h1-001"
+worker_type = "box"
+
+# Relay server address (IP:PORT)
+relay_addr = "192.168.1.100:8080"
+
+# Heartbeat interval in seconds
+heartbeat_interval_secs = 30

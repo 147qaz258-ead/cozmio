@@ -1,0 +1,139 @@
+Agent design reading:
+
+1. User signal:
+User asks: "帮我看一下 Cozmio 这个项目里 memory_competition 现在是怎么工作的"
+(Show me how memory_competition works in the Cozmio project)
+
+2. Target agent behavior:
+Understand the existing memory competition / reminder context assembly system well enough to evaluate its design completeness and integration.
+
+3. Evidence available:
+- `cozmio_memory/src/competition.rs` - MemoryCompetition struct, build_reminder_context method
+- `cozmio_memory/src/lib.rs` - Module exports
+- `src-tauri/src/memory_commands.rs` - IPC command surface (build_reminder_context_dto, get_reminder_context_dto)
+- `src-tauri/src/prompt_context.rs` - build_popup_context (separate, parallel context builder)
+- `cozmio_memory/src/importer.rs`, `slice_builder.rs`, `thread_linker.rs` - Writers that populate stores
+
+4. Context needed:
+What is MemoryCompetition trying to assemble? What stores does it query? What is the critical gate? How does it connect to the model prompt?
+
+5. Model decision:
+Not applicable - this is a code understanding task, not a model-in-the-loop task.
+
+6. Tools/actions:
+N/A
+
+7. Feedback loop:
+N/A
+
+8. Verification gate:
+Code analysis + architecture reading.
+
+---
+
+Agent design brief:
+
+Target behavior:
+MemoryCompetition is a context assembly engine. Given an ActivityNote (window_title + content_text + timestamp + thread_id), it assembles a ReminderContext by querying five memory stores and returns both assembled strings and raw EvidenceRef records.
+
+Current user problem:
+The user wants to understand what exists, not fix a bug. This is a design understanding task.
+
+Agent shape:
+N/A (analysis task, not an agent design task).
+
+Observation source:
+The system reads from SQLite stores inside cozmio_memory.
+
+Evidence:
+The five evidence sources queried by build_reminder_context:
+
+1. ContextSlicesStore (context_slices table) — recent context slices in the last 2 hours, from note.timestamp. Returns summary + evidence_source + start_time.
+
+2. SearchEngine.search (memory_events table via FTS5) — full-text search on sanitized window_title. Returns up to 10 events with evidence_source, content, timestamp.
+
+3. DecisionMemoryStore (decisions table) — thread-specific decisions if thread_id is set, otherwise falls back to all decisions (up to 5), with seed decisions labeled "[seed辅助]" as auxiliary.
+
+4. SkillMemoryStore (skills table) — top 3 skills, each as "name: procedure" string.
+
+5. TaskThreadsStore (task_threads table) — if thread_id is set, returns "Task: {name} - {current_state}".
+
+Evidence ref construction:
+Every evidence_ref includes source, memory_type, id, content_snippet (truncated at 200 chars), and timestamp. Sources include "imported" (from importer/thread_linker/slice_builder), "seed" (seed decisions), and other custom sources.
+
+Critical gate (line 171-174):
+```rust
+let has_imported = evidence_refs.iter().any(|e| e.source == "imported");
+if !has_imported {
+    return Err(MemoryError::InsufficientImportedData);
+}
+```
+If no evidence with source == "imported" exists in the evidence_refs, the entire build_reminder_context returns an error. "imported" is the marker used by importer.rs, slice_builder.rs, and thread_linker.rs to indicate data that was seeded or imported from external sources — as opposed to runtime-generated records. This gate ensures the reminder context is not built purely from ephemeral/runtime data.
+
+MemoryCore wraps db + embed_provider and exposes search_engine() and competition().
+
+Context entering model:
+build_reminder_context is called via two IPC commands:
+- build_reminder_context_dto: takes window_title, content_text, current_thread_id (from frontend)
+- get_reminder_context_dto: convenience wrapper with no thread_id
+
+The ReminderContextDto is serialized and sent to the frontend. The frontend presumably injects it into a model prompt.
+
+Model decision:
+The ReminderContext (assembled strings + evidence refs) is given to a vision model as context. The model then decides whether to intervene / what suggestion to make.
+
+Tools/actions:
+No tools are called by MemoryCompetition itself. It is purely a read/assembly layer.
+
+Feedback loop:
+MemoryCompetition does not participate in the feedback loop. Feedback would flow through the action_log system in prompt_context.rs (separate code path).
+
+Memory/state:
+MemoryCompetition is stateless between calls — it borrows db and search_engine. All state is in the SQLite stores.
+
+Traceability:
+EvidenceRef provides id + memory_type + content_snippet for each piece of evidence, enabling the model to reference specific memory records.
+
+---
+
+Architecture correction:
+
+Current direction:
+MemoryCompetition builds a ReminderContext that gets sent to the frontend (memory_commands.rs returns ReminderContextDto). The frontend is expected to inject this into a model prompt. This is one context path.
+
+Separate from this, prompt_context.rs (build_popup_context) assembles a different context string from ActionLogger records and ProcessContext — this is the context used for the actual popup/judgment model call.
+
+The expected integration: ReminderContext from MemoryCompetition supplements the model's context for better judgment.
+
+Better framing:
+There are two parallel context assembly paths in Cozmio:
+
+Path A (prompt_context.rs):
+  ActionLogger records (judgment history) + ProcessContext (window switch metrics)
+  → build_popup_context → model prompt for popup judgment
+
+Path B (competition.rs):
+  Memory stores (context_slices, memory_events FTS5, decisions, skills, task_threads)
+  → build_reminder_context → ReminderContextDto → frontend
+
+The key missing integration is: Path B output (ReminderContext) is not clearly connected to Path A's model call. The frontend receives ReminderContextDto but it is unclear how it reaches the Ollama model. The commented-out code in memory_commands.rs (lines 586-596) suggests this integration was planned but not wired up.
+
+Agent layer affected:
+Layer 2 (context assembly) — two separate assembly paths with unclear handoff.
+
+What should be model judgment:
+The model should receive both the short-term behavioral context (prompt_context) and the long-term memory context (MemoryCompetition) in a unified prompt structure.
+
+What should be program plumbing:
+A single context assembly function that merges both paths before calling the model. Currently they appear to be separate code paths with no known merge point.
+
+Concrete next artifact:
+Trace the actual data flow: find where ReminderContextDto output from memory_commands.rs is actually consumed in the frontend and model call path. If there is no merge with build_popup_context output, that is the missing integration point.
+
+Verification:
+Find the frontend code that receives ReminderContextDto and traces whether it is appended to the model prompt alongside the build_popup_context output. If both contexts reach the model independently without merging, the system is double-contexting or one is unused.
+
+---
+
+First buildable slice:
+Map the actual consumption point of ReminderContextDto in the frontend/model call path, then determine whether it is combined with prompt_context output or used in a separate model call.

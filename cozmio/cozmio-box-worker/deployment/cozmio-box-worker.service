@@ -1,0 +1,23 @@
+[Unit]
+Description=Cozmio Box Worker Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/opt/cozmio
+ExecStart=/opt/cozmio/bin/box-worker
+Restart=always
+RestartSec=5
+StandardOutput=append:/opt/cozmio/logs/box-worker.log
+StandardError=append:/opt/cozmio/logs/box-worker.log
+
+# Hardening: preventExecYes allows execution only of specific binaries
+# No Ollama dependency - Box Worker runs independently
+ProtectSystem=full
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

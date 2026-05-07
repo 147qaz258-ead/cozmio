@@ -1,0 +1,35 @@
+#!/bin/bash
+echo "=== Hardware Probe ==="
+echo "Timestamp: $(date -Iseconds)"
+echo -e "\n--- OS Info ---"
+uname -a
+cat /etc/os-release 2>/dev/null || echo "N/A"
+echo -e "\n--- Architecture ---"
+uname -m
+echo -e "\n--- CPU ---"
+cat /proc/cpuinfo | grep -E "Model|Revision|Hardware" | head -5
+nproc 2>/dev/null || echo "N/A"
+echo -e "\n--- Memory ---"
+free -h 2>/dev/null || echo "N/A"
+cat /proc/meminfo | grep -E "MemTotal|MemAvailable" 2>/dev/null || echo "N/A"
+echo -e "\n--- Disk ---"
+df -h / 2>/dev/null | tail -1
+echo -e "\n--- Network ---"
+ip addr show 2>/dev/null | grep -E "inet |link/ether" | head -10
+hostname -I 2>/dev/null || echo "N/A"
+echo -e "\n--- Python ---"
+python3 --version 2>/dev/null || echo "N/A"
+echo -e "\n--- Rust ---"
+rustc --version 2>/dev/null || echo "N/A"
+cargo --version 2>/dev/null || echo "N/A"
+echo -e "\n--- Node ---"
+node --version 2>/dev/null || echo "N/A"
+npm --version 2>/dev/null || echo "N/A"
+echo -e "\n--- Temperature ---"
+cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null | awk '{print $1/1000 " C"}' || echo "N/A"
+echo -e "\n--- llama.cpp ---"
+which llama-server 2>/dev/null || which llama-cli 2>/dev/null || echo "not found"
+ls /opt/llama.cpp 2>/dev/null || echo "not installed at /opt/llama.cpp"
+echo -e "\n--- Model files ---"
+ls /opt/cozmio/models/ 2>/dev/null || echo "no models dir"
+find /opt -name "*.gguf" 2>/dev/null | head -5 || echo "no GGUF files found"

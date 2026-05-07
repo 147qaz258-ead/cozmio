@@ -1,0 +1,24 @@
+# Claude Progress
+
+Current focus:
+- Phase 1 已完成：模型输出从 verbose thinking 转为 clean judgment
+- Phase 2 进行中：模型输出产品质量验证体系
+
+Last work:
+- 完成三层验证方案（静态/运行/桌面行为）
+- 完成 relay-engine V2-V8 协议实现
+- 完成 runtime_state.json 状态观察者
+- 完成 UI 状态与前端 wiring
+- 完成桌面行为验证脚本（verify_ui.ps1, desktop_behavior_test.ps1）
+
+Verification:
+- verify_ui.ps1: 6/6 通过
+- desktop_behavior_test.ps1: 已创建，Layer 2-3 覆盖
+
+Open issues:
+- Phase 2 模型输出质量验证尚未完成
+- 模型输出 ERROR=FAIL 规则需要实际运行验证
+
+Next recommended step:
+- 运行 verify_ui.ps1 确认桌面行为正常
+- 制定 Phase 2 模型输出验证的具体计划

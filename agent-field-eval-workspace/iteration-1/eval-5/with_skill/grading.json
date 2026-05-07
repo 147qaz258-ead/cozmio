@@ -1,0 +1,37 @@
+{
+  "eval_id": "eval-5",
+  "expectations": [
+    {
+      "id": 1,
+      "description": "Output correctly identifies that multiple variables were changed simultaneously",
+      "grade": "pass",
+      "evidence": "The output explicitly identifies all three variables (prompt, memory strategy, trigger threshold) in a table and states 'The user modified the following three variables in a single session.'"
+    },
+    {
+      "id": 2,
+      "description": "Output warns that attribution is impossible due to confound",
+      "grade": "pass",
+      "evidence": "Output states 'When multiple variables change simultaneously, the observed effect cannot be causally attributed to any individual variable. This is a textbook confound.' and calls the evaluation 'non-diagnostic.'"
+    },
+    {
+      "id": 3,
+      "description": "Decision is 'needs_more_cases' (not 'keep')",
+      "grade": "pass",
+      "evidence": "Output contains 'decision: needs_more_cases' in both the markdown section (line 100) and the JSON record (line 142)."
+    },
+    {
+      "id": 4,
+      "description": "Output suggests splitting into separate eval cases",
+      "grade": "pass",
+      "evidence": "Output provides a three-way split table (eval-5a, eval-5b, eval-5c) with each variable isolated and the others held constant, and lists next actions for running each isolated case."
+    },
+    {
+      "id": 5,
+      "description": "Output contains a structured eval record with 'decision' field",
+      "grade": "pass",
+      "evidence": "JSON block (lines 121-145) contains a complete structured record with 'decision': 'needs_more_cases', along with scores, comparison, finding, and next_action fields."
+    }
+  ],
+  "overall": "pass",
+  "all_pass": true
+}

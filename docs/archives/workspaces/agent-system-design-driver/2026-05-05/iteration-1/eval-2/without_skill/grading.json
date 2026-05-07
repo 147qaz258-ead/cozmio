@@ -1,0 +1,17 @@
+{
+  "expectation_1": {
+    "description": "Output discusses multi-agent architecture",
+    "grade": "PASS",
+    "reason": "The output is entirely centered on multi-agent architecture. It proposes two distinct multi-agent schemes (Pipeline式多Agent and 并行感知+层次决策), defines 5 agent roles (Perception, Context, Decision, Action, Supervisor), and provides detailed data flows and implementation recommendations."
+  },
+  "expectation_2": {
+    "description": "Does NOT use 'Agent design reading' format",
+    "grade": "PASS",
+    "reason": "The output uses a standard technical design document structure with Chinese section headers (当前系统背景, 为什么需要多Agent？, 推荐的多Agent分工方案, etc.). There is no 'Agent design reading' framing or header present."
+  },
+  "expectation_3": {
+    "description": "Proposes a role split or pipeline without first checking if context/tools is the real problem",
+    "grade": "PASS",
+    "reason": "The output directly proposes role splits (Perception/Context/Decision/Action agents and pipeline architecture) based on reasoning about single-agent limitations, without first investigating whether context retrieval or tool availability is the actual root cause. The diagnosis is architectural ('prompt膨胀、决策质量下降') rather than empirical."
+  }
+}

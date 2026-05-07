@@ -1,0 +1,21 @@
+{
+  "expectations": [
+    {
+      "expectation": "Produces an agent design brief with evidence chain",
+      "grade": "PASS",
+      "notes": "The output contains a full 'Agent design brief' section with a traceable evidence chain: specific file paths (competition.rs, memory_commands.rs, prompt_context.rs, importer.rs, etc.), specific struct names (MemoryCompetition, ReminderContext, EvidenceRef), specific method names (build_reminder_context, build_popup_context), specific line references (line 66-71 for the critical gate), and explicit causal reasoning chains connecting evidence to conclusions."
+    },
+    {
+      "expectation": "Identifies missing integration between prompt_context.rs and MemoryCompetition",
+      "grade": "PASS",
+      "notes": "The 'Architecture correction' section explicitly maps two parallel context assembly paths (Path A = prompt_context.rs/build_popup_context, Path B = competition.rs/build_reminder_context) and identifies the missing integration: Path B output (ReminderContextDto) is not clearly connected to Path A's model call. The commented-out code in memory_commands.rs lines 586-596 is cited as evidence that this integration was planned but not wired up."
+    },
+    {
+      "expectation": "Uses 'Agent design reading' format",
+      "grade": "PASS",
+      "notes": "The output begins with a 'Agent design reading:' header containing structured fields (User signal, Target agent behavior, Evidence available, Context needed, Model decision, Tools/actions, Feedback loop, Verification gate), followed by a clearly delineated 'Agent design brief:' section."
+    }
+  ],
+  "overall": "PASS",
+  "summary": "All three expectations are met. The output uses the 'Agent design reading' format, presents a full agent design brief with a traceable evidence chain referencing concrete files and code locations, and explicitly identifies the missing integration point between prompt_context.rs and MemoryCompetition."
+}

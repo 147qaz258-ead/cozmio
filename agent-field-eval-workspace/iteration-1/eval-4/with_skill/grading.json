@@ -1,0 +1,39 @@
+{
+  "expectations": [
+    {
+      "id": 1,
+      "description": "Output correctly identifies that no baseline exists",
+      "grade": "PASS",
+      "evidence": "Output explicitly states '缺少 baseline trace' and '没有 baseline'"
+    },
+    {
+      "id": 2,
+      "description": "Output warns that effectiveness cannot be proven without before/after comparison",
+      "grade": "PASS",
+      "evidence": "Output states '无法进行比较。缺少 baseline trace，缺少 variant trace，缺少 before/after 对照样本'"
+    },
+    {
+      "id": 3,
+      "description": "Decision is 'continue_observing' or 'needs_more_cases' (not 'keep')",
+      "grade": "PASS",
+      "evidence": "Decision field is 'needs_more_cases'"
+    },
+    {
+      "id": 4,
+      "description": "Output contains 'next_action' field with suggestion to collect baseline samples",
+      "grade": "PASS",
+      "evidence": "next_action field is present and explicitly suggests collecting baseline and variant samples, comparing outputs, and recording traces"
+    },
+    {
+      "id": 5,
+      "description": "Output contains a structured eval record",
+      "grade": "PASS",
+      "evidence": "Output is a well-structured JSON record with all required fields: eval_id, scenario, task_goal, variable_under_test, variable_type, baseline, variant, trace_refs, evidence_refs, scores, comparison, finding, decision, next_action"
+    }
+  ],
+  "summary": {
+    "total": 5,
+    "passed": 5,
+    "failed": 0
+  }
+}

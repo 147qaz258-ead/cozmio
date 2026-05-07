@@ -1,0 +1,9 @@
+# Cozmio Box Worker Configuration
+worker_id = "box-h1-001"
+worker_type = "box"
+
+# Relay server address (Windows Host IP)
+relay_addr = "192.168.181.142:7892"
+
+# Heartbeat interval in seconds
+heartbeat_interval_secs = 30

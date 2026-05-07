@@ -1,0 +1,24 @@
+[package]
+name = "relay-engine"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+prost = "0.13"
+prost-build = "0.13"
+serde = { version = "1", features = ["derive"] }
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4"] }
+thiserror = "2"
+log = "0.4"
+env_logger = "0.11"
+once_cell = "1"
+parking_lot = "0.12"
+
+[build-dependencies]
+prost-build = "0.13"
+
+[[bin]]
+name = "relay-engine"
+path = "src/main.rs"

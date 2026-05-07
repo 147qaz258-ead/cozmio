@@ -1,0 +1,21 @@
+{
+  "expectations": [
+    {
+      "expectation": "Output uses 'Agent design reading' format",
+      "grade": "PASS",
+      "evidence": "Document opens with '## Agent Design Reading' section (line 3) containing all standard fields: user signal, target agent behavior, evidence available, context needed, model decision, tools/actions, feedback loop, verification gate, and weakest layer (lines 1-54)."
+    },
+    {
+      "expectation": "Identifies weakest layer (context assembly or timing judgment)",
+      "grade": "PASS",
+      "evidence": "Lines 49-54 explicitly state 'Current weakest layer: LAYER 2 — Context Assembly' with rationale: no mechanism to detect good vs. bad intervention moments, reacts to window title changes after-the-fact rather than reasoning about user flow state. Root cause analysis (Problem A/B/C, lines 58-103) and Architecture Correction section (lines 255-286) further elaborate the timing judgment deficiency."
+    },
+    {
+      "expectation": "Produces a Claude Code work order, not redesign memory system",
+      "grade": "PASS",
+      "evidence": "Lines 289-306 contain 'Summary of Changes Needed' table with 7 prioritized file-level changes (window_monitor.rs, main_loop.rs, prompt_context.rs, model_client.rs, commands.rs, runtime_state.rs, notification_manager.rs), each with specific concrete changes. Ends with verification command 'cd cozmio && cargo build'. No memory system redesign proposed — changes are targeted at the intervention timing/notification flow."
+    }
+  ],
+  "overall": "PASS",
+  "notes": "All three expectations met. The output correctly uses the Agent Design Reading format, identifies LAYER 2 (Context Assembly) as the weakest layer with thorough root cause analysis, and concludes with a concrete, file-specific work order targeting the intervention timing problem rather than proposing a memory system overhaul."
+}

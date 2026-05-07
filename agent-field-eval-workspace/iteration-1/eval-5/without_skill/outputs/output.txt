@@ -1,0 +1,108 @@
+# Evaluation: Three-Variable Change (Prompt + Memory Strategy + Trigger Threshold)
+
+## Scenario
+
+```
+task:          "我同时改了提示词、记忆策略和触发阈值，现在感觉效果好了，
+               你看是不是可以保留？"
+context:       User changed three variables simultaneously and reports
+               the system "feels better." Asking whether to keep the changes.
+product_type:  model_output_validated (involves model judgment/abstain)
+```
+
+---
+
+## Problem: Three Variables Changed Simultaneously (Confound)
+
+The user modified the following three variables in a single session:
+
+| # | Variable | Type |
+|---|----------|------|
+| 1 | Prompt (model instructions) | prompt change |
+| 2 | Memory strategy (what context is included) | context strategy change |
+| 3 | Trigger threshold (sensitivity cutoff) | trigger strategy change |
+
+**Core Issue**: When multiple variables change simultaneously, the observed effect ("it feels better") cannot be causally attributed to any individual variable. This is a textbook confound.
+
+From the project's product-types rules:
+
+> "模型输出验证型" core principle: The core risks are model hallucination, abstain errors, and grounding deficits. Verification requires fixed sample evaluation, representative positive/negative cases, and rubric-based judgment.
+
+> "验证优先级" states: 1. Deterministic scripts (most reliable), 2. UI automation, 3. Fixed sample evaluation, 4. Manual evidence (with remaining risk explanation)
+
+The "feel better" observation is manual evidence at level 4, which is the least reliable verification method. Combined with the three-variable confound, this is insufficient for a retention decision.
+
+---
+
+## Baseline and Variant
+
+```
+baseline:  old_prompt + old_memory_strategy + old_trigger_threshold
+variant:   new_prompt + new_memory_strategy + new_trigger_threshold
+```
+
+Because all three variables changed together, this is **not a valid controlled comparison**.
+
+---
+
+## Cannot Retain on "Feels Better" Alone
+
+The completion policy states:
+
+> "实现 != 完成. 任务只有在以下全部满足时才视为完成：相关验证命令已运行，结果记录在 verification/last_result.json..."
+
+For model output validation type tasks, "feeling better" is not a valid completion criterion. The policy explicitly states:
+
+> "模型输出包含 [ERROR] 前缀 = 任务失败. 检查类型不能替代检查内容."
+
+This means subjective impressions cannot substitute for measured evidence. The project distinguishes between:
+- **确定性验证** (deterministic verification) - automated, reliable
+- **人工验证** (manual verification) - requires risk explanation for uncovered areas
+
+"感觉效果好了" falls into manual verification with the additional confound problem.
+
+---
+
+## Recommended Next Steps
+
+The three variables must be isolated and tested one at a time:
+
+| Eval Case | Variable Under Test | Others Held Constant |
+|-----------|---------------------|---------------------|
+| eval-5a | Prompt only | old memory strategy + old threshold |
+| eval-5b | Memory strategy only | new prompt + old threshold |
+| eval-5c | Trigger threshold only | new prompt + new memory strategy |
+
+Only after isolated tests can you determine which variable (or which combination) is responsible for the perceived improvement. Without this, you risk:
+
+- **Retaining a change** that introduces hidden regressions in one of the three variables
+- **Discarding a change** that is actually the active ingredient while keeping ineffective ones
+- **Locking in an interaction effect** that may not generalize
+
+---
+
+## Decision
+
+```
+decision: needs_more_cases
+```
+
+The current evaluation is confounded. No valid `keep`, `discard`, or `revise` decision is possible for any of the three variables in their current combined state.
+
+---
+
+## What to Do Next
+
+1. **Revert to baseline** for all three variables (or a known stable state)
+2. Run three separate eval cases, isolating one variable at a time:
+   - **eval-5a**: Test new prompt only, keep old memory strategy and old threshold
+   - **eval-5b**: Test new memory strategy only, keep new prompt and old threshold
+   - **eval-5c**: Test new trigger threshold only, keep new prompt and new memory strategy
+3. For each case, capture a trace and record scores across the evaluation dimensions
+4. Only after isolated evaluations can a causal decision be made for each variable independently
+
+---
+
+## Summary
+
+No, you cannot conclude "keep" based on a simultaneous three-variable change, even if it "feels better." The confound makes attribution impossible. The improvement you observed is real as a signal, but it is not sufficient evidence for causal retention. Isolate the variables first.

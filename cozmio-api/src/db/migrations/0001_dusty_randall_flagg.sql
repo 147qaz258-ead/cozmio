@@ -1,0 +1,1 @@
+ALTER TABLE "tasks" ALTER COLUMN "share_token" DROP DEFAULT;

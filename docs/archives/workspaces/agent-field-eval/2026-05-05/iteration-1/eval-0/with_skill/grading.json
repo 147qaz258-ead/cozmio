@@ -1,0 +1,31 @@
+{
+  "expectation_1_structured_eval_with_scenario": {
+    "passed": true,
+    "evidence": "Line 3: 'scenario' field present with full scenario description"
+  },
+  "expectation_2_variable_under_test": {
+    "passed": true,
+    "evidence": "Line 5: variable_under_test = 'memory_competition (specifically MemoryCore::competition().build_reminder_context())'"
+  },
+  "expectation_3_baseline_defined": {
+    "passed": true,
+    "evidence": "Line 7: baseline = 'current_screen_only — agent processes foreground window using only immediate signals (window_title + content_text) without any memory candidates...'"
+  },
+  "expectation_4_variant_defined": {
+    "passed": true,
+    "evidence": "Line 8: variant = 'current_screen_plus_memory_competition — same foreground window input enriched via build_reminder_context()...'"
+  },
+  "expectation_5_scores_with_task_relevance_and_evidence_grounding": {
+    "passed": true,
+    "evidence": "Lines 26-33: scores object contains task_relevance=4 and evidence_grounding=5, plus actionability, interruption_cost, hallucination_risk, stability"
+  },
+  "expectation_6_finding_with_substantive_analysis": {
+    "passed": true,
+    "evidence": "Line 49: finding field contains substantive multi-sentence analysis of memory_competition effectiveness and stability flaw"
+  },
+  "expectation_7_decision_field": {
+    "passed": true,
+    "evidence": "Line 50: decision = 'revise' (one of the expected values: keep/revise/discard/continue_observing/needs_more_cases)"
+  },
+  "summary": "All 7 expectations passed. The eval record is complete and well-structured."
+}

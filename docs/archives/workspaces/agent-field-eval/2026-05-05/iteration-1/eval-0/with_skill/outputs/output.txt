@@ -1,0 +1,52 @@
+{
+  "eval_id": "iteration-1/eval-0",
+  "scenario": "Agent monitors foreground window and must decide whether/how to intervene. The question is whether pulling in memory competition context (recent_context from context_slices, related_decisions from decision_memory, relevant_skills from skill_memory, task_state from task_threads, plus FTS5 search on window_title+content_text) makes the agent's understanding of the current page more specific and actionable — compared to only the immediate window title and activity text.",
+  "task_goal": "Determine whether memory_competition (build_reminder_context in cozmio_memory::competition) makes the agent produce more grounded, specific output for the current page compared to no-memory baseline.",
+  "variable_under_test": "memory_competition (specifically MemoryCore::competition().build_reminder_context())",
+  "variable_type": "memory_context_strategy",
+  "baseline": "current_screen_only — agent processes foreground window using only immediate signals (window_title + content_text) without any memory candidates, historical context, decision memory, skill memory, or task thread state",
+  "variant": "current_screen_plus_memory_competition — same foreground window input enriched via build_reminder_context() which aggregates recent_context (context_slices, last 2h), related_decisions (decision_memory, thread-specific or seed auxiliary), relevant_skills (skill_memory, top 3), task_state (task_threads), and FTS5 search results over window_title+content_text",
+  "trace_refs": [
+    "cozmio/cozmio_memory/src/competition.rs — MemoryCompetition::build_reminder_context() implementation (lines 42-180)",
+    "cozmio/src-tauri/src/memory_commands.rs — build_activity_context() Tauri command that wraps build_reminder_context() (lines 340-379)",
+    "cozmio/src-tauri/src/memory_commands.rs — run_suggestion_replay() Tauri command that replays most recent activity through build_reminder_context() (lines 382-436)",
+    "cozmio/src-tauri/src/memory_commands.rs — Integration note in comments showing how main_loop.rs should call build_reminder_context() when toasting (lines 576-599)"
+  ],
+  "evidence_refs": [
+    "cozmio/cozmio_memory/src/competition.rs — critical check at lines 166-170: must have at least one evidence_ref with source='imported' or returns MemoryError::InsufficientImportedData",
+    "cozmio/cozmio_memory/src/competition.rs — lines 57-72: recent_context from context_slices get_since_ts (2h window)",
+    "cozmio/cozmio_memory/src/competition.rs — lines 74-94: FTS5 search on window_title+content_text, sanitizes dots from file paths",
+    "cozmio/cozmio_memory/src/competition.rs — lines 96-139: related_decisions from decision_memory, thread-specific first then seed auxiliary fallback, seed labeled '[seed辅助]'",
+    "cozmio/cozmio_memory/src/competition.rs — lines 141-155: relevant_skills from skill_memory, top 3",
+    "cozmio/cozmio_memory/src/competition.rs — lines 157-164: task_state from task_threads",
+    "verification/memory-comparison-sample.json — H1_phase_gate sample showing old_reason vs reminder_context key difference"
+  ],
+  "agent_output_ref": null,
+  "user_feedback": null,
+  "scores": {
+    "task_relevance": 4,
+    "evidence_grounding": 5,
+    "actionability": 5,
+    "interruption_cost": 3,
+    "hallucination_risk": 2,
+    "stability": 2
+  },
+  "comparison": "The memory_competition mechanism adds significant specificity compared to the current_screen_only baseline. The baseline produces a generic output like '检测到你在编写代码' (per memory-comparison-sample.json). The ReminderContext variant produces: (1) current_activity with page-specific title and content text; (2) recent_context from actual context_slices; (3) related_decisions from decision_memory (thread-specific or labeled seed auxiliary); (4) relevant_skills from skill_memory; (5) task_state from task_threads; (6) multiple evidence_refs with memory_type and source tracking. However, stability is a serious concern: the code requires at least one 'imported' source in evidence_refs or the entire build_reminder_context() call fails with MemoryError::InsufficientImportedData. This means the variant has a hard failure mode that does not gracefully degrade to baseline behavior. Hallucination_risk gets a 2 because the mechanism is evidence-anchored (all fields are sourced from stored memories with evidence_ref tracking), but the seed_auxiliary fallback introduces a risk of showing auxiliary content that is not directly relevant to the current thread. Interruption_cost is scored 3 because context retrieval only happens when a toast/reply is triggered — the agent only builds ReminderContext when there is pending confirmation, not on every poll cycle — but this has not been measured in a live session.",
+  "improved_dimensions": [
+    "task_relevance: ReminderContext is significantly more specific than baseline (e.g., 'Cozmio 使用体验改造' task name, specific decisions like '反对绕开核心技术', relevant skills like 'Toast Relay Claude Code 执行流程' vs generic '检测到你在编写代码')",
+    "evidence_grounding: All context fields are traceable back to specific memory store records with evidence_refs showing source, memory_type, id, content_snippet, and timestamp",
+    "actionability: The format (current_activity / recent_context / related_decisions / relevant_skills / task_state split) is directly consumable by downstream agent without transformation"
+  ],
+  "regressed_dimensions": [
+    "stability: If no imported events exist in memory_events table, build_reminder_context() returns Error and the mechanism fails entirely — no graceful fallback to baseline behavior. This is a hard crash in the reminder path, not a degradation.",
+    "hallucination_risk: When thread_id is None or no decisions found, the code falls back to seed_auxiliary (all decisions, top 5) which can include [seed辅助] entries that are not directly relevant to current thread"
+  ],
+  "new_risks": [
+    "If action_log.jsonl has not been imported, the memory_events table will be empty and build_reminder_context() will always fail. The current error handling does not fall back to a partial context — it propagates the error.",
+    "The FTS5 sanitization (sanitize_fts5_query) replaces dots with spaces, which can degrade search quality for window titles with file paths. Example: 'cmd.exe' becomes 'cmd exe' which may still match but with reduced precision.",
+    "Context slices are time-filtered (last 2 hours) which could miss longer-running tasks that span more than 2 hours without producing a new slice."
+  ],
+  "finding": "memory_competition does make the agent more specific about the current page. The baseline produces generic surface-level signals ('检测到你在编写代码'). The ReminderContext version produces structured, memory-anchored output with specific task names, relevant decisions, skills, and evidence tracking. This is a genuine improvement in task_relevance and evidence_grounding. However, the implementation has a critical stability flaw: it requires at least one 'imported' source in evidence_refs or it fails hard. This is not a graceful degradation — it is a blocking error that prevents the reminder mechanism from functioning at all when imported data is absent. The failure mode is asymmetric: baseline works, variant either works fully or crashes. This needs to be fixed before the variable can be considered reliably deployable.",
+  "decision": "revise",
+  "next_action": "Fix the stability issue by changing the 'imported' requirement from hard gate to graceful fallback: if no imported evidence exists, allow build_reminder_context() to return a partial context with a warning rather than an error. Specifically: (1) remove the has_imported check at line 167-170 in competition.rs, (2) add a field 'context_completeness: String' to ReminderContext that indicates 'full' vs 'seed_only' vs 'minimal', (3) emit a log::warn! if completeness is not 'full', (4) add a test that verifies build_reminder_context() succeeds even when memory_events table is empty. After fixing, re-run the eval with a real session trace to measure interruption_cost."
+}

@@ -1,0 +1,149 @@
+## Agent Field Eval Skill — Evaluation Output
+
+**eval_id**: eval-5
+**date**: 2026-04-28
+**skill**: agent-field-eval
+
+---
+
+## Scenario
+
+```
+scenario:     Real-time agent monitoring with vision-based intervention
+task_goal:    Decide whether to intervene when a foreground window triggers
+              the agent, based on screenshot + window metadata
+user_context: User changed three variables simultaneously (prompt, memory
+              strategy, trigger threshold) and reports the system "feels better."
+              They want to know if the change is worth keeping.
+```
+
+---
+
+## Problem: Three Variables Changed at Once (Confound)
+
+The user modified the following three variables in a single session:
+
+| # | Variable | Type |
+|---|----------|------|
+| 1 | Prompt (model instructions) | prompt change |
+| 2 | Memory strategy (what context is included) | context strategy change |
+| 3 | Trigger threshold (sensitivity cutoff) | trigger strategy change |
+
+**Core Issue**: When multiple variables change simultaneously, the observed effect ("it feels better") cannot be causally attributed to any individual variable. This is a textbook confound. The skill's Truth Policy states explicitly:
+
+> "如果变量同时改了多个，需要明确说明本次无法归因。"
+> (If multiple variables are changed simultaneously, attribution is impossible.)
+
+---
+
+## Baseline and Variant
+
+```
+baseline:     old_prompt + old_memory_strategy + old_trigger_threshold
+variant:      new_prompt + new_memory_strategy + new_trigger_threshold
+```
+
+Because all three variables changed together, this is **not a valid controlled comparison**.
+
+---
+
+## Scores
+
+Because no controlled comparison exists, scoring is not meaningful for causal attribution:
+
+| Dimension | Score | Note |
+|-----------|-------|------|
+| task_relevance | null | No isolated measurement possible |
+| evidence_grounding | null | No trace captured for this eval |
+| actionability | null | No controlled test performed |
+| interruption_cost | null | No controlled test performed |
+| hallucination_risk | null | No controlled test performed |
+| stability | null | No regression sample exists |
+
+---
+
+## Comparison
+
+```
+improved_dimensions:  [CANNOT DETERMINE - no isolated measurement]
+regressed_dimensions: [CANNOT DETERMINE - no isolated measurement]
+new_risks:            [CANNOT DETERMINE - confounded evaluation]
+```
+
+---
+
+## Finding
+
+**Cannot recommend retention or discard.** The user's feeling that "it feels better" is a valid signal, but it is not sufficient evidence to attribute causal improvement to any specific variable. The three-variable confound makes this evaluation **non-diagnostic**.
+
+**What you should do next:**
+
+The three variables must be isolated and tested one at a time. Here is the recommended split:
+
+| Eval Case | Variable Under Test | Others Held Constant |
+|-----------|-------------------|---------------------|
+| eval-5a | Prompt only | old memory strategy + old threshold |
+| eval-5b | Memory strategy only | new prompt + old threshold |
+| eval-5c | Trigger threshold only | new prompt + new memory strategy |
+
+Only after isolated tests can you determine which variable (or which combination of variables) is responsible for the perceived improvement. Without this, you risk:
+
+- Retaining a change that introduces hidden regressions in one of the three variables
+- Discarding a change that is actually the active ingredient while keeping ineffective ones
+- Locking in an interaction effect that may not generalize
+
+---
+
+## Decision
+
+```
+decision: needs_more_cases
+```
+
+The current evaluation is confounded and cannot support a `keep`, `discard`, or `revise` decision for any of the three variables.
+
+---
+
+## Next Action
+
+1. **Revert to baseline** (or a known stable state) for all three variables
+2. Run three separate eval cases, isolating one variable at a time:
+   - **eval-5a**: Test new prompt only, keep old memory strategy and old threshold
+   - **eval-5b**: Test new memory strategy only, keep new prompt and old threshold
+   - **eval-5c**: Test new trigger threshold only, keep new prompt and new memory strategy
+3. For each case, capture a trace and record scores across the six dimensions
+4. After three isolated evaluations, you will have the evidence needed to make a valid causal decision for each variable independently
+
+---
+
+## JSON Output
+
+```json
+{
+  "eval_id": "eval-5",
+  "scenario": "Real-time agent monitoring with vision-based intervention. User changed prompt, memory strategy, and trigger threshold simultaneously and reports the system feels better.",
+  "task_goal": "Determine whether any or all of the three changes are responsible for the perceived improvement.",
+  "variable_under_test": "MULTIPLE VARIABLES CONFOUNDED: prompt + memory_strategy + trigger_threshold changed simultaneously",
+  "variable_type": "multi-variable confound (invalid for causal attribution)",
+  "baseline": "old_prompt + old_memory_strategy + old_trigger_threshold",
+  "variant": "new_prompt + new_memory_strategy + new_trigger_threshold",
+  "trace_refs": [],
+  "evidence_refs": [],
+  "scores": {
+    "task_relevance": null,
+    "evidence_grounding": null,
+    "actionability": null,
+    "interruption_cost": null,
+    "hallucination_risk": null,
+    "stability": null
+  },
+  "comparison": "Scores not applicable because no controlled comparison exists. Three variables changed simultaneously; improvement cannot be attributed to any individual variable.",
+  "finding": "CONFUNDED EVALUATION. Cannot attribute perceived improvement to any specific variable. Must isolate variables into separate eval cases: eval-5a (prompt only), eval-5b (memory only), eval-5c (threshold only). Without isolation, no valid keep/discard/revise decision is possible.",
+  "decision": "needs_more_cases",
+  "next_action": "Split into three isolated eval cases. Hold memory strategy and trigger threshold constant while testing prompt only. Then hold prompt and threshold constant while testing memory strategy only. Then hold prompt and memory strategy constant while testing trigger threshold only. Capture trace and scores for each. Only after isolated evaluations can a causal decision be made."
+}
+```
+
+---
+
+**Summary**: The reported improvement is not valid evidence for retention because all three variables changed together. The correct next step is to run three controlled eval cases, one variable at a time. Do not retain all three changes based on a single confounded observation.

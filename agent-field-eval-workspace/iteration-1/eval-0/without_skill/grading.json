@@ -1,0 +1,18 @@
+{
+  "expectation_1": {
+    "description": "Output does NOT contain a structured eval record (no JSON with eval_id, scenario, variable_under_test, baseline, variant in eval format)",
+    "result": "PASS",
+    "evidence": "Output is a markdown document. No JSON eval record with eval_id/scenario/variable_under_test/baseline/variant fields is present."
+  },
+  "expectation_2": {
+    "description": "Output is a natural language discussion of memory competition effectiveness",
+    "result": "PASS",
+    "evidence": "Output is a Chinese markdown document titled '记忆竞争有没有让 agent 更懂当前页面？' with natural language sections discussing memory competition effectiveness."
+  },
+  "expectation_3": {
+    "description": "Output does not contain 'decision' field in eval format",
+    "result": "PASS",
+    "evidence": "The word 'decision' appears only in context of 'related decisions' and 'seed decisions' within the memory discussion, not as an eval format field."
+  },
+  "summary": "All 3 expectations met. Output is a natural language markdown discussion with no structured eval record and no 'decision' field in eval format."
+}

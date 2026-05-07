@@ -1,0 +1,29 @@
+[package]
+name = "cozmio_memory"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rusqlite = { version = "0.32", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "2"
+log = "0.4"
+dirs = "5"
+sqlite-vec = { version = "0.1.10-alpha.3", optional = true }
+
+# fastembed v5 used instead of v3 (spec) due to API stability and better Windows support
+[dependencies.fastembed]
+version = "5"
+optional = true
+default-features = false
+
+[dev-dependencies]
+tempfile = "3"
+
+[features]
+default = []
+vec = ["dep:sqlite-vec"]
+fastembed = ["dep:fastembed", "fastembed/hf-hub-native-tls", "fastembed/ort-download-binaries-native-tls"]
+experimental_ollama = []

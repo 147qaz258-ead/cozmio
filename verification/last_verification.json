@@ -1,0 +1,56 @@
+{
+  "generated": "2026-05-07",
+  "plan": "docs/superpowers/plans/2026-05-07-agent-self-maintained-memory-flywheel-wide-stage-plan.md",
+  "feature_id": "AGENT-MEMORY-FLYWHEEL-TASK-3",
+  "product_type": "traditional_software",
+  "task": "Implement consolidation agent path",
+  "verification_commands": [
+    {
+      "command": "cargo fmt && cargo test -p cozmio memory_consolidation",
+      "cwd": "D:/C_Projects/Agent/cozmio/cozmio",
+      "result": "pass",
+      "evidence": "memory_consolidation filter: 15 passed; 0 failed; 61 filtered out. semantic_boundary integration test binary: 0 tests run; 2 filtered out. Build completed with existing warnings."
+    },
+    {
+      "command": "cargo test -p cozmio experience_recorder",
+      "cwd": "D:/C_Projects/Agent/cozmio/cozmio",
+      "result": "pass",
+      "evidence": "experience_recorder filter: 4 passed; 0 failed; 72 filtered out. semantic_boundary integration test binary: 0 tests run; 2 filtered out. Build completed with existing warnings."
+    },
+    {
+      "command": "cargo check -p cozmio",
+      "cwd": "D:/C_Projects/Agent/cozmio/cozmio",
+      "result": "pass",
+      "evidence": "Finished dev profile successfully in 6.25s. Existing warnings remain; no compile errors."
+    }
+  ],
+  "changes_verified": [
+    "Consolidation packets are built from recent experience_sources, related active memories, and an explicit current_hot_context field without adding semantic interpretation in code",
+    "Prompt builder includes local-only routing, tool descriptions, privacy/routing limits, and required boundary instructions",
+    "Manual deterministic consolidation command records consolidation_runs, validates and applies multiple operation requests, completes/fails run state, and records abstain in the run result",
+    "Operation application supports remember_episode, remember_reflection, remember_skill, update_hot_context, remove_or_supersede, and abstain mapped to episode, reflection, procedure, and hot_context_proposal layers",
+    "Duplicate exact active memories for the same layer/body/source_refs are not appended repeatedly",
+    "remove_or_supersede keeps superseded memories inspectable through storage while list_active excludes them from live recall",
+    "update_hot_context creates a hot_context_proposal draft memory and does not auto-apply human hot context",
+    "Scheduler hooks run after popup confirmed/cancelled/dismissed, confirmation expiry, executor completed/failed, and throttled idle periods; no hook runs on every observation",
+    "Tauri IPC/dev commands for building the consolidation prompt and running manual memory consolidation are registered"
+  ],
+  "uncovered_areas": [
+    {
+      "area": "Live model-decided consolidation parser",
+      "reason": "No reliable live consolidation-specific model/parser path exists in the inspected codebase, so this task intentionally implements prompt-builder plus deterministic/manual operation application rather than fake model intelligence",
+      "impact": "Automatic scheduler records prompt-only consolidation runs; actual memory-changing operations require the manual/dev command path or a future parser-backed agent"
+    },
+    {
+      "area": "Current hot context file loading",
+      "reason": "The existing human_memory.rs module is stale/unregistered and depends on a missing context_files module, so Task 3 avoids compiling or modifying it and supplies an explicit empty current_hot_context fallback in production packet builders",
+      "impact": "Packet schema and prompt include current_hot_context, and tests cover non-empty injected hot context; production automatic prompt-only packets currently carry an empty hot context until Task 4/hot context refactor provides a live source"
+    },
+    {
+      "area": "Full workspace regression and live Tauri runtime invocation",
+      "reason": "Required focused Rust verification commands were run; full workspace tests and live desktop IPC/UI automation were not requested or run",
+      "impact": "Coverage is limited to focused consolidation/recorder tests and cozmio package check"
+    }
+  ],
+  "failure_conditions_met": []
+}

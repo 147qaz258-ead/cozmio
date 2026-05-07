@@ -1,0 +1,19 @@
+[package]
+name = "cozmio_core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+base64 = "0.22"
+image = "0.25"
+xcap = "0.1"
+windows = { version = "0.58", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_Graphics_Gdi",
+    "Win32_System_Threading",
+] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+anyhow = "1.0"

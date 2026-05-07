@@ -1,0 +1,113 @@
+Agent design reading:
+
+1. User signal:
+User is asking about introducing multi-agent architecture for Cozmio and how to divide responsibilities. This is a design question, not a reported bug.
+
+2. Target agent behavior:
+Multiple specialized agents with clear roles cooperating to provide better desktop assistance.
+
+3. Evidence available:
+- main_loop.rs: Single polling loop (Layer 0-5)
+- WindowMonitor: Evidence capture (screenshot, window title, process context)
+- prompt_context.rs: Context assembly (process_context + action_log_tail)
+- ModelClient: Ollama API call with raw output preserved
+- Executor: Simple routing based on InterventionMode
+- cozmio_memory: Separate module with MemoryCompetition, decision_memory, skill_memory, context_slices
+
+4. Context needed:
+What specific problem is the current single-agent design failing at?
+- Is it context weakness (evidence not rich enough)?
+- Is it timing (reactions feel like "马后炮")?
+- Is it role confusion (one agent trying to do too much)?
+- Is it memory not integrated into the observation loop?
+
+5. Model decision:
+Before proposing multi-agent, check if the problem is actually:
+- Weak context assembly (current: simple process_context + action_log_tail)
+- Unclear tool boundaries (current: ModelClient + Executor are simple)
+- Missing memory integration (current: cozmio_memory exists but is not wired into main_loop)
+
+6. Tools/actions:
+Current: capture, model_call, notification, user_confirmation
+Memory module has: search, decision_retrieval, skill_retrieval, context_slices
+
+7. Feedback loop:
+User confirms/dismisses → logged to action_log → affects next popup_context.
+
+8. Verification gate:
+Action log replay. Currently no automated verification of suggestion quality.
+
+9. Current weakest layer:
+Based on available evidence, the weakest layer is Layer 2 (context assembly) and Layer 6 (verification). The memory system exists but is NOT integrated into the main loop.
+
+---
+
+Multi-agent check: Should this be multi-agent?
+
+Multi-agent is justified only for:
+- context isolation
+- tool isolation
+- role specialization
+- parallel research
+- independent verification
+
+Current assessment: The existing problems do NOT clearly justify multi-agent yet.
+
+Reasoning:
+
+1. **Context isolation need?** The MemoryCompetition already separates memory retrieval into its own subsystem. It has decision_memory, skill_memory, context_slices -- but these are NOT connected to the main_loop. The gap is integration, not another agent.
+
+2. **Tool isolation need?** The current tools (capture, model, notification) are already conceptually separate. No tool conflict or resource contention exists.
+
+3. **Role specialization need?** The current loop does observation + judgment + notification in one pass. This COULD be separated into:
+   - Observer agent: watches windows, builds evidence
+   - Reasoner agent: given evidence, decides if help is useful
+   - Executor agent: given reasoner output, presents notification
+   But this specialization only helps if the bottleneck is "one agent doing too many things poorly." The current bottleneck is unclear.
+
+4. **Parallel research need?** Not evident. The polling loop is sequential by nature.
+
+5. **Independent verification need?** The action log provides feedback, but there's no separate verification agent checking whether suggestions were correct.
+
+**The actual gap**: cozmio_memory exists with MemoryCompetition, but the main_loop in main_loop.rs does NOT use it. The context passed to the model is just process_context + action_log_tail (last 6 records). Long-term memory, decisions, skills are never retrieved. This is a context assembly problem, not a multi-agent problem.
+
+---
+
+Recommendation:
+
+**Do NOT introduce multi-agent yet.** Instead:
+
+1. First, wire MemoryCompetition into the main loop context assembly. The current popup_context should include ReminderContext from memory. This alone could dramatically improve suggestion quality.
+
+2. If after integrating memory, the problem is still "one model call has too many responsibilities," THEN consider splitting into:
+   - Observer: captures and pre-processes evidence
+   - Reasoner: given enriched context, decides intervention
+   - Executor: handles confirmation and action
+
+3. If introducing multi-agent, use Shape D with these specific roles:
+   - Main agent: coordinates the loop, owns the memory integration
+   - Sub-agent (Observer): specializes in window/process evidence extraction
+   - Sub-agent (Reasoner): specializes in help-decision given rich context
+   - Sub-agent (Executor): specializes in user communication and follow-up
+
+**Do NOT start with multi-agent design.** Start with evidence: integrate memory first, measure improvement, then decide if complexity justifies agent split.
+
+---
+
+Artifact produced: Architecture correction
+
+Current direction: Considering multi-agent because "one agent doing everything feels wrong."
+
+Problem with this direction: The current single-agent loop is not maxed out -- it simply hasn't integrated the memory system that already exists. Adding agents before integrating memory wastes complexity budget on coordination, not on better suggestions.
+
+Better framing: "How do we integrate MemoryCompetition into popup_context so the model gets richer context, before we consider splitting roles?"
+
+Agent layer affected: Layer 2 (context assembly) and Layer 3 (model judgment)
+
+What should be model judgment: Whether the current window activity warrants intervention, given enriched context including past decisions and relevant skills.
+
+What should be program plumbing: Memory retrieval, context assembly, screenshot capture, notification dispatch.
+
+Concrete next artifact: A context assembly contract between main_loop and MemoryCompetition that defines what ReminderContext fields are included in the prompt, and when memory should vs. should not be retrieved (to avoid latency).
+
+Verification: Run the existing main_loop with memory-integrated context on a fixed set of window sequences. Compare suggestion quality via action_log before/after.

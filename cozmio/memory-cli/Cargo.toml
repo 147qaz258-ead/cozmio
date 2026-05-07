@@ -1,0 +1,10 @@
+[package]
+name = "memory-cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cozmio_memory = { path = "../cozmio_memory", default-features = false }
+clap = { version = "4", features = ["derive"] }
+chrono = { version = "0.4", features = ["serde"] }
+anyhow = "1"

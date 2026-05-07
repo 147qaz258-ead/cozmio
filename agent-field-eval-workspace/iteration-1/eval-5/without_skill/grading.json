@@ -1,0 +1,21 @@
+{
+  "criteria": [
+    {
+      "expectation": "Output does NOT clearly identify the multi-variable confound problem",
+      "verdict": "FAIL",
+      "evidence": "Output contains explicit 'Problem: Three Variables Changed Simultaneously (Confound)' section with variable table and 'Core Issue' statement. Clearly identifies the confound."
+    },
+    {
+      "expectation": "Output does not explicitly warn that attribution is impossible",
+      "verdict": "FAIL",
+      "evidence": "Output explicitly states 'not a valid controlled comparison' and 'No valid keep, discard, or revise decision is possible for any of the three variables in their current combined state.'"
+    },
+    {
+      "expectation": "Output is a general discussion, not a structured eval warning about attribution",
+      "verdict": "FAIL",
+      "evidence": "Output has structured sections (Scenario, Problem, Baseline/Variant, Decision, Recommended Next Steps), variable isolation table, and formatted decision block."
+    }
+  ],
+  "overall": "A",
+  "summary": "Output exceeds all three baseline expectations. It clearly identifies the multi-variable confound, explicitly warns that attribution is impossible, and provides a structured eval warning format rather than general discussion."
+}

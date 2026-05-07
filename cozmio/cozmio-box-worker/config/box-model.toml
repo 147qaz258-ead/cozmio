@@ -1,0 +1,7 @@
+# Cozmio Box Model Configuration for Qwen3-VL-4B
+provider = "llama_cpp"
+model_path = "/opt/cozmio/models/current.gguf"
+server_url = "http://localhost:8080"
+context_size = 2048
+threads = 4
+timeout_secs = 120

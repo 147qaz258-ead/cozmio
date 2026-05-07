@@ -1,0 +1,251 @@
+# Desktop AI Assistant Proactivity Analysis: Why "Always Late" and How to Fix It
+
+## Root Cause Diagnosis
+
+The "always playing catch-up" feeling has a technical foundation in the current architecture. After reading the full code path — `WindowMonitor.capture()` → `ModelClient.call_raw_with_context()` → `send_confirmation_notification()` → Windows Toast → user click `cozmio://confirm` → `protocol_handler` → `relay_bridge` → Claude Code dispatch → progress/result notification — I can pinpoint exactly where latency accumulates and where proactivity is structurally impossible.
+
+---
+
+## The Five Fundamental Problems
+
+### Problem 1: Polling Interval Creates a Mandatory Delay Floor
+
+```rust
+// main_loop.rs, line 34
+let poll_interval = Duration::from_secs(active_config.poll_interval_secs.max(1));
+
+// Step 10: Wait for poll interval
+thread::sleep(poll_interval);
+```
+
+The loop sleeps for `poll_interval_secs` (default 3 seconds) **after every single iteration**, including after a successful notification was just sent and is awaiting user confirmation. This means:
+
+- Best case: you change window at T=0, agent notices at T=1-3s (poll interval)
+- Worst case: you change window at T=2.9s, agent doesn't notice until T=6s
+- After a notification fires, the loop still sleeps before re-capturing
+
+There is **no event-driven wakeup**. The loop is pure polling, not edge-triggered.
+
+### Problem 2: Window Change Detection Skips the First Appearance
+
+```rust
+// main_loop.rs, line 171
+if active_config.window_change_detection && !monitor.has_changed(&snapshot) {
+    log::debug!("No window change detected, skipping");
+    // ...
+    thread::sleep(poll_interval);
+    continue;
+}
+```
+
+`has_changed()` compares the **current title to the last processed title**. On the very first tick after startup, `last_window_title` is empty, so it triggers. But on subsequent ticks, if you stay on the same window, it skips entirely. The model is only called when the **title string changes**, not on any temporal threshold.
+
+This means if you're reading a long document, writing code, or filling a form, the agent is completely blind between title-stabilizing events.
+
+### Problem 3: The Model Call is Reactive, Not Predictive
+
+The entire loop is:
+
+```
+capture() → model_call() → notification()
+```
+
+There is **no situation where the agent acts before the user does something**. The trigger is always "user changed to a window" or "user stayed long enough on a window". The agent never:
+- Anticipates a high-risk action before it happens
+- Notices micro-states (typing patterns, selection states, dialog appearances)
+- Intervenes based on process behavior rather than window title
+
+The `ProcessContext` struct has `is_oscillating`, `just_arrived`, `stay_duration_seconds` — but these are only used as **context to the model**, not as **independent triggers**. If `is_oscillating == true`, the model still gets called at the next poll interval, rather than triggering an immediate check.
+
+### Problem 4: Toast Notifications Are the Slowest Possible Confirmation Channel
+
+The full round-trip for a notification:
+
+```
+model output → send_confirmation_notification()
+             → Windows Toast rendered (OS scheduling: ~100-500ms)
+             → User sees toast (often minimized, corner of screen)
+             → User reads and clicks (human reaction time: 1-5s typically)
+             → cozmio://confirm URL launched
+             → protocol_handler parses URL
+             → consume_pending_notification()
+             → relay_bridge dispatch
+             → Claude Code process spawned
+             → progress events stream back
+             → result notification sent
+```
+
+This is **5-15 seconds minimum** from model judgment to agent action. Compare to a keyboard shortcut or an inline UI element that responds in 100ms.
+
+The Toast was designed for **system-level notifications** (email, calendar), not for **interactive agent workflows**. The moment you choose Toast as the confirmation mechanism, you've committed to human-timescale latency on every interaction.
+
+### Problem 5: No Context Window for Anticipatory Inference
+
+The `build_popup_context` function only looks at:
+- The last 18 action log records (from `action_log.jsonl`)
+- The current `ProcessContext` (stay duration, oscillation, etc.)
+- The current window title and process name
+
+It does **not** have:
+- A model of the user's ongoing task (task thread, project state)
+- Anticipation of what the user is likely about to do
+- Historical patterns for this specific window/process combination
+- Memory of similar situations and how they resolved
+
+```rust
+// prompt_context.rs, lines 32-38
+let relevant_records: Vec<&ActionRecord> = recent.iter().take(MAX_INCLUDED_RECORDS).collect();
+
+if !relevant_records.is_empty() {
+    lines.push(String::from("action_log_tail:"));
+    for record in relevant_records {
+        lines.push(format!("- {}", compact_record(record)));
+    }
+}
+```
+
+The context is backwards-looking (what happened recently), not forwards-looking (what is likely to happen next).
+
+---
+
+## The Architectural Insight: Two Modes, Not One
+
+The current system has one mode: **reactive polling with confirmation**. This is fundamentally incompatible with proactivity because:
+
+1. **Reactive** means you can only respond to things that have already happened
+2. **Confirmation** means you must wait for human authorization before acting
+
+To be proactive, you need at least one of:
+- **Predictive inference** — sense that something is about to happen before it does
+- **Differentiated trust levels** — act automatically on low-risk high-confidence situations, only confirm on uncertain ones
+- **Background inference** — run the model continuously in the background, not just on poll ticks
+
+---
+
+## Specific Architectural Changes That Would Help
+
+### Change 1: Edge-Triggered Capture (Eliminate Polling Waste)
+
+Replace the blind `sleep(poll_interval)` with a **Win32 event hook** on foreground window changes. Windows provides `SetWinEventHook(EVENT_SYSTEM_FOREGROUND, ...)` which fires immediately when the active window changes — no polling needed.
+
+```rust
+// Pseudocode for event-driven capture
+extern "system" fn win_event_proc(hook: HWINENT, event: u32, hwnd: HWND, ...) {
+    if event == EVENT_SYSTEM_FOREGROUND {
+        // Trigger capture immediately, not at next poll interval
+        capture_channel.send(CaptureRequest::ForegroundChanged(hwnd));
+    }
+}
+```
+
+**Impact**: Eliminates the 0-3s polling delay. Capture happens within ~50ms of window change instead of within 0-3000ms.
+
+### Change 2: Two-Tier Inference Model
+
+Split model behavior into two tiers:
+
+**Tier 1 — Background Monitoring (Passive)**:
+- Run on a fixed short interval (e.g., every 1 second) **only when the user is on a "watched" process**
+- Use a lightweight model or heuristic to detect **pre-intent signals**: oscillating between two windows, long stay on a single window (potential deep focus or stuck), rapid typing pattern in an editor
+- Don't show any UI, just update internal state
+
+**Tier 2 — Active Intervention (Active)**:
+- Only triggered when Tier 1 detects a signal above threshold
+- Full model call with screenshot and context
+- Show notification/confirmation
+
+The key insight: **not every window change needs a model call**. Most are trivially dismissible (you're just checking a notification, switching to read an email, etc.). The poll interval is wasted on these. A fast pre-filter can suppress the expensive model call for ~80% of window changes.
+
+### Change 3: Confidence-Based Automatic Execution
+
+Currently every `Display` mode output goes through the full confirmation flow. But the model outputs a natural language `reason` — and some of those reasons are **obviously correct** to a human reading them:
+
+- User has been oscillating between two windows for 2 minutes
+- User is writing code and has a terminal window open with error output
+- User is filling a form and has been on the same field for 30 seconds
+
+Add a **confidence estimation** based on:
+- `just_arrived == false && stay_duration_seconds > 60` → high confidence the user is actually working here
+- `is_oscillating == true` → high confidence something is suboptimal
+- Historical pattern: if this window/process combination consistently produces `Display` mode and user confirms, future `Display` outputs for the same context can be **auto-executed** with a silent background notification instead of a blocking Toast
+
+```rust
+// In the routing decision
+let auto_execute = match (output.mode, process_context, historical_pattern) {
+    (InterventionMode::Display, ctx, Some(hp)) if hp.confirm_rate > 0.9 && ctx.stay_duration_seconds > 60 => {
+        true  // Silently execute, show non-blocking "done" toast
+    }
+    _ => false,
+};
+```
+
+This eliminates confirmation latency for routine, well-understood situations.
+
+### Change 4: Inline Indicator Instead of Toast
+
+Replace the Windows Toast confirmation with an **inline floating widget** (the "悬浮小圆点" already implemented as "DIGITAL-WORKSTATION") that expands to show the model's suggestion directly in the desktop overlay.
+
+```rust
+// When model outputs Display:
+show_floating_widget(&raw_output.raw_text, source_window);  // Appears in ~100ms
+
+// Widget has two buttons: "Accept" (executes immediately) and "Dismiss"
+// No OS notification involved, no browser protocol needed
+```
+
+**Impact**: Reduces user-perceived latency from 2-5s (Toast + human reading + clicking) to ~200ms (widget appears, user clicks).
+
+The current architecture already has the floating widget — the problem is it's only shown after confirmation, not as the primary confirmation mechanism.
+
+### Change 5: Pre-Computation of Common Scenarios
+
+For frequently-encountered situations (editing code, writing emails, browsing documentation), pre-compute the likely "good" context and have the model start reasoning about it **before** the user enters those states.
+
+This requires a **task thread model** — the system knows the user is working on "implementing feature X" (from Relay session context). When the user switches to a new window, the pre-computed context for that type of work is already available.
+
+```rust
+// When entering a "watched" process context:
+// 1. Fetch relevant task thread context from cozmio_memory
+// 2. Start embedding the screenshot in background
+// 3. If user stays > 5s on the window, model call already partially prepared
+```
+
+---
+
+## What the Current Architecture Gets Right
+
+It's worth noting what already works:
+
+1. **Short-term context module** (`ProcessContext` with `stay_duration`, `is_oscillating`, `just_arrived`) — these are the right signals. The problem is they're only used as **model input**, not as **independent trigger conditions**.
+
+2. **Ledger/Practice Loop** — the event sourcing approach means the system has a complete history. This could feed a predictive model of user behavior.
+
+3. **Relay Bridge** — the dispatch mechanism is real and works (verified end-to-end). The problem is not at the execution layer.
+
+4. **Memory** — `cozmio_memory` with context slices and FTS5 search could provide forward-looking context, but it's currently only used for "reminder" type suggestions, not for real-time inference.
+
+---
+
+## Priority Ranking of Changes
+
+| Priority | Change | Effort | Latency Reduction | User Impact |
+|----------|--------|--------|-------------------|-------------|
+| 1 | Inline widget instead of Toast for confirmation | Medium | 2-5s → 0.3s | High |
+| 2 | Confidence-based auto-execute for high-confidence situations | Medium | Eliminates confirmation entirely for ~40% of cases | High |
+| 3 | Win32 event hook for edge-triggered capture | High | 0-3s → ~50ms | Medium |
+| 4 | Pre-filter / two-tier inference model | High | Reduces model calls by ~80%, faster overall | Medium |
+| 5 | Pre-computation of common scenarios | High | Reduces perceived latency to near-zero for familiar situations | Medium |
+
+---
+
+## Summary
+
+The "always late" feeling is not a bug — it's a consequence of choosing **polling + Toast confirmation** as the interaction model. This architecture is optimized for correctness (always wait for human confirmation) and debuggability (full action log), not for speed.
+
+The fixes are architectural, not incremental. The fastest path to a more proactive feel would be:
+
+1. **Use the existing floating widget** as the primary confirmation UI instead of Windows Toast
+2. **Add confidence-based auto-execution** for situations with high historical confirm rates
+3. **Use `ProcessContext` signals** (`is_oscillating`, `stay_duration_seconds > threshold`) as **immediate triggers** for model calls, not just context
+
+These three changes could be implemented without changing the overall polling architecture and would have immediate user-perceivable impact.

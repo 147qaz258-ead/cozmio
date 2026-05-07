@@ -1,0 +1,15 @@
+[package]
+name = "relay-client"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+prost = "0.13"
+thiserror = "2"
+log = "0.4"
+
+[build-dependencies]
+prost-build = "0.13"
+
+

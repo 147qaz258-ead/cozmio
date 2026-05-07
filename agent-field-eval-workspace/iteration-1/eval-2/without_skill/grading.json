@@ -1,0 +1,17 @@
+{
+  "expectation_1_structured_eval_record": {
+    "expectation": "Output does NOT contain a structured eval record",
+    "grade": "PASS",
+    "evidence": "Output is a natural language essay. While it references the 'agent-field-eval skill output format' (line 75-76) as a hypothetical reference, no actual structured eval record (with fields like scenario, variable_under_test, baseline, variant, scores, finding, decision) appears in the output."
+  },
+  "expectation_2_natural_language_discussion": {
+    "expectation": "Output is a natural language discussion of how to evaluate a bug-triage skill",
+    "grade": "PASS",
+    "evidence": "The output is an essay-format natural language discussion covering: baseline vs variant methodology, 6 evaluation dimensions (task_relevance, evidence_grounding, actionability, interruption_cost, hallucination_risk, stability), judgment criteria, conclusion types, and common failure modes. It reads as guidance prose, not a structured evaluation record."
+  },
+  "expectation_3_no_decision_field": {
+    "expectation": "Output does not contain 'decision' field in eval format",
+    "grade": "PASS",
+    "evidence": "The word 'decision' appears only in two places: (1) line 27 discussing whether behavior '变好了还是变差了' (got better or worse), and (2) line 63 listing outcome types ('结论类型') as natural language categories (keep/revise/discard/etc.). Neither is a 'decision' field in a structured eval format. No field named 'decision' exists in the output."
+  }
+}

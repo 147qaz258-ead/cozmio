@@ -1,0 +1,41 @@
+[package]
+name = "cozmio"
+version = "0.1.0"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+tauri-plugin-deep-link = "2"
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+cozmio_core = { path = "../cozmio_core" }
+cozmio_memory = { path = "../cozmio_memory", default-features = false }
+reqwest = { version = "0.12", features = ["json", "blocking"] }
+tokio = { version = "1", features = ["full"] }
+chrono = { version = "0.4", features = ["serde"] }
+log = "0.4"
+env_logger = "0.11"
+dirs = "5"
+regex = "1"
+relay-client = { path = "../relay-client" }
+windows = { version = "0.58", features = [
+    "Data_Xml_Dom",
+    "UI_Notifications",
+] }
+winrt-notification = "0.5"
+sha256 = "1.5"
+
+[dev-dependencies]
+serial_test = "3"
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

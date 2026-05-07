@@ -1,0 +1,153 @@
+# Claude Progress
+
+Current main task:
+- ID: WEB-NO-AUTH
+- Title: /use page no-login direct access
+- Status: PASS (build verified)
+- Verification: npm run build pass
+
+## Web Mock Auth (2026-05-07)
+
+### Completed work
+
+- Fixed api.ts: Added MOCK_MODE=true demo fallback for auth and task APIs
+  - sendCode(): Stores pending email, returns demo OTP hint "123456"
+  - verifyCode(): Validates against DEMO_OTP="123456", stores mock session in localStorage
+  - getTasks(), getTask(), createTask(): Return mock data in demo mode
+- Fixed Shell.tsx: CozFooter subscribe form now functional
+  - Added useState for email, subscribed, loading states
+  - Added onChange handler for email input
+  - Added submit button with loading/success states
+
+### Build verification
+
+npm run build - PASS (21 pages generated)
+
+### Notes
+
+- /use page login works in demo mode with OTP 123456
+- Real backend needed for production: Email OTP service, database, session management
+- Footer subscribe is visual-only in demo mode
+
+---
+
+Previous main task:
+- ID: AGENT-MEMORY-FLYWHEEL-TASK-3
+- Title: Agent self-maintained memory flywheel — consolidation agent path
+- Status: PASS (deterministic Rust verification passed)
+- Plan: docs/superpowers/plans/2026-05-07-agent-self-maintained-memory-flywheel-wide-stage-plan.md
+
+## Agent Memory Flywheel Task 3 (2026-05-07)
+
+### Completed work
+
+- Implemented consolidation packet building from recent `experience_sources` plus related active memories and an explicit `current_hot_context` field.
+- Added related-memory DTOs and recall-based packet enrichment using active memories only.
+- Added a local-only consolidation prompt builder with the required contract:
+  - receives factual packet, related memories, current hot context, tool descriptions, and privacy/routing limits
+  - says not to invent motives or hidden user state
+  - preserves uncertainty
+  - writes only when future behavior should change
+  - requires source refs for non-abstain operations
+  - prefers feedback-bearing experience
+  - avoids stable conclusions from screenshot-only evidence
+- Added deterministic/manual consolidation runner for the no-live-parser case:
+  - creates `consolidation_runs`
+  - accepts explicit operation requests
+  - validates source refs against packet refs
+  - applies multiple operations
+  - completes or fails run state
+  - records abstain in the run result without creating memory
+- Supported operation/layer mapping:
+  - `remember_episode` -> `episode`
+  - `remember_reflection` -> `reflection`
+  - `remember_skill` -> `procedure`
+  - `update_hot_context` -> `hot_context_proposal` draft memory only
+  - `remove_or_supersede` -> reject or supersede existing memory
+  - `abstain` -> no memory write
+- Added duplicate exact active-memory avoidance for matching layer/body/source refs.
+- Kept superseded memories inspectable via storage while excluding them from live active recall.
+- Registered Tauri IPC/dev commands:
+  - `build_memory_consolidation_prompt`
+  - `run_manual_memory_consolidation`
+- Added scheduler hooks after:
+  - popup confirmed
+  - popup cancelled
+  - popup dismissed
+  - pending confirmation expired
+  - executor completed
+  - executor failed
+  - throttled idle periods when the app is not waiting on pending/active work
+- Did not add a consolidation hook to every observation.
+- Avoided compiling or modifying stale `human_memory.rs`; production packet builders currently use an empty hot-context fallback, while tests cover injected non-empty hot context.
+
+### Verification
+
+Recorded in `verification/last_verification.json`.
+
+Commands run from `D:/C_Projects/Agent/cozmio/cozmio`:
+- `cargo fmt && cargo test -p cozmio memory_consolidation`
+  - PASS: 15 memory_consolidation tests passed, 0 failed, 61 filtered out; semantic_boundary integration binary ran 0 tests with 2 filtered out.
+- `cargo test -p cozmio experience_recorder`
+  - PASS: 4 experience_recorder tests passed, 0 failed, 72 filtered out; semantic_boundary integration binary ran 0 tests with 2 filtered out.
+- `cargo check -p cozmio`
+  - PASS: package check finished successfully in 6.25s.
+
+### Remaining risks / next session
+
+- No live consolidation-specific model/parser exists yet. Automatic scheduler runs record prompt-only consolidation runs; memory-changing operations require the manual/dev command path until a parser-backed agent is added.
+- Production current hot context is currently an empty fallback because `human_memory.rs` is stale/unregistered and depends on missing `context_files`; Task 4 should define the live hot-context source/refactor.
+- Live Tauri IPC/runtime invocation was not automated; tests exercise helper and command-facing Rust paths.
+- Full workspace regression was not run.
+- Existing repository warnings remain and were not part of this task.
+
+---
+
+## Agent Memory Flywheel Task 4 — Wide Stage (2026-05-07)
+
+### Completed work
+
+Tasks 7-10 from the Wide Stage Plan completed via subagent-driven-development workflow:
+
+**Task 7: Memory Inspector features**
+- Supersede button on active memories → apply_memory_operation with remove_or_supersede
+- Run Consolidation toolbar button → run_manual_memory_consolidation
+- Apply Proposal button on hot_context_proposal layer → set_hot_context with memory body
+- Hot Context view/edit → get_hot_context + set_hot_context
+- Replay Selected: checkbox selection of source_refs, "Replay Selected" button appears when ≥1 selected
+
+**Task 8: Privacy/Routing Inspector**
+- Added memory_maintenance_mode config field (default "local")
+- get_privacy_routing_status command returns current_mode, allowed_material_ids, route_distribution, last_approval_source_refs
+- MemoryInspector.js Privacy section displays mode, allowed material count, route distribution
+- Constraint check logs warning when mode != "local" (does not block)
+
+**Task 9: Evaluation Replay (BLOCKER fixed)**
+- build_replay_comparison_report command: WITH memory vs WITHOUT memory prompt comparison
+- Fixed BLOCKER: without_memory_preview now uses build_consolidation_prompt (not hardcoded template)
+- MemoryInspector.js renders side-by-side comparison report
+
+**Task 10: Procedure Recall complete loop**
+- get_procedure_recall_stats: total_procedures, active_procedures, total_use_count, top_procedures by use_count
+- increment_procedure_use_count: validates layer=procedure, increments use_count
+- use_count incremented in related_memories_for_packet when procedure recalled
+- MemoryInspector.js Procedure section displays stats and top 5 procedures
+
+### Verification
+
+Commands run from `D:/C_Projects/Agent/cozmio/cozmio`:
+- `cargo test -p cozmio`
+  - PASS: 81 tests passed, 0 failed; semantic_boundary 2 passed
+- `cargo check -p cozmio`
+  - PASS: package check finished
+
+### Notes
+
+- All data returned is factual boundary (route names, counts, IDs, body text, source refs) — no semantic inference
+- semantic_boundary compliance: experience_recorder blocks forbidden semantic labels from entering experience sources
+- Pre-existing 51 warnings in cozmio crate, unrelated to these tasks
+
+### Next session
+
+- Tasks 1-6 from the original plan remain: handoff/executor recall full acceptance, Procedure candidate packet full loop completion
+- Refer to plan: docs/superpowers/plans/2026-05-07-agent-self-maintained-memory-flywheel-wide-stage-plan.md

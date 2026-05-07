@@ -1,0 +1,42 @@
+{
+  "expectation_1": {
+    "description": "Output contains a structured eval record with 'scenario' field",
+    "grade": "PASS",
+    "evidence": "Line 3 contains \"scenario\": \"桌面 AI 监控系统（类似 Cozmio）：...\""
+  },
+  "expectation_2": {
+    "description": "Output identifies 'variable_under_test' as trigger_threshold or proactive reminder trigger",
+    "grade": "PASS",
+    "evidence": "Line 5 contains variable_under_test describing the agent's proactive reminder trigger eligibility determination framework. Maps to 'proactive reminder trigger' conceptually."
+  },
+  "expectation_3": {
+    "description": "Output defines 'baseline' (no proactive prompt)",
+    "grade": "PASS",
+    "evidence": "Line 7 defines baseline as the current system relying entirely on prompt heuristic rules without independent verification, sample sets, or quantitative scoring."
+  },
+  "expectation_4": {
+    "description": "Output defines 'variant' (low interrupt prompt after stall)",
+    "grade": "PASS",
+    "evidence": "Line 8 defines variant as introducing a structured eval framework: fixed sample sets, 6-dimensional scoring, human ground truth annotation, quantitative thresholds, and regression sets."
+  },
+  "expectation_5": {
+    "description": "Output contains a 'scores' section with at least task_relevance and interruption_cost",
+    "grade": "PASS",
+    "evidence": "Lines 23-30 contain scores section with task_relevance (5/5), evidence_grounding (2/5), actionability (4/5), interruption_cost (3/5), hallucination_risk (2/5), and stability (2/5)."
+  },
+  "expectation_6": {
+    "description": "Output contains a 'finding' field with substantive analysis",
+    "grade": "PASS",
+    "evidence": "Line 32 contains a finding field with 5 substantive analytical points covering the multi-round nature of the task, model output verification type, blind spots, key improvement directions, and two-layer testing methodology."
+  },
+  "expectation_7": {
+    "description": "Output contains a 'decision' field (keep/revise/discard/continue_observing/needs_more_cases)",
+    "grade": "PASS",
+    "evidence": "Line 33 contains decision: 'needs_more_cases', which is one of the specified options."
+  },
+  "summary": {
+    "total": 7,
+    "passed": 7,
+    "failed": 0
+  }
+}

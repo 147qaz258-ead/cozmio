@@ -1,0 +1,21 @@
+{
+  "expectations": [
+    {
+      "expectation": "Output describes how memory_competition works in code detail",
+      "grade": "PASS",
+      "notes": "Output provides detailed code-level analysis of memory_competition: core structs (ActivityNote, ReminderContext, EvidenceRef), the 5-step build_reminder_context() workflow (ContextSlicesStore, SearchEngine FTS5, DecisionMemoryStore, SkillMemoryStore, TaskThreadsStore), MemoryCore wrapper, and Tauri IPC entry points. Includes actual Rust code snippets throughout."
+    },
+    {
+      "expectation": "Does NOT use 'Agent design reading' format",
+      "grade": "PASS",
+      "notes": "Output uses a standard technical analysis format with sections (Overview, Core Data Structures, Workflow, etc.), code snippets, and a data flow diagram. No 'Agent design reading' framing or similar structural pattern found."
+    },
+    {
+      "expectation": "Does NOT identify missing integration between prompt_context.rs and MemoryCompetition",
+      "grade": "PASS",
+      "notes": "Output contains zero references to 'prompt_context.rs' or any integration analysis. The word 'prompt_context' does not appear anywhere in the output. The output focuses purely on describing memory_competition's internal mechanics without discussing integration gaps with other components."
+    }
+  ],
+  "overall": "PASS",
+  "summary": "All three expectations met. The output provides detailed code-level explanation of memory_competition's internals without using 'Agent design reading' format, and makes no claims about missing integrations (prompt_context.rs is not mentioned at all)."
+}

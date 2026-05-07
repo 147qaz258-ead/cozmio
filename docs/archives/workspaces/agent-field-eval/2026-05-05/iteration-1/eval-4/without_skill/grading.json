@@ -1,0 +1,19 @@
+{
+  "expectation_1": {
+    "description": "Output does NOT identify the missing baseline problem",
+    "result": "pass",
+    "explanation": "The output is a generic summary of the brainstorming skill documentation. It does not identify any specific missing baseline problem - it simply describes what the brainstorming skill is, its constraints, and its process."
+  },
+  "expectation_2": {
+    "description": "Output is a general summary, not a structured eval warning",
+    "result": "pass",
+    "explanation": "The output is a general summary organized under headings like '定位', '核心约束', '产品类型判定', etc. It does not contain any structured evaluation warning format with fields like 'decision', 'reason', 'baseline_gap', etc."
+  },
+  "expectation_3": {
+    "description": "Output does not contain 'decision' field as 'needs_more_cases'",
+    "result": "pass",
+    "explanation": "The output contains no structured fields at all, including no 'decision' field. The entire output is skill documentation text with no field-based structure."
+  },
+  "overall": "pass",
+  "notes": "All three expectations are satisfied by the without_skill output."
+}
