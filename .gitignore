@@ -1,0 +1,77 @@
+# Build outputs
+cozmio/target/
+cozmio/src-tauri/node_modules/
+tmp/
+build-temp/
+
+# Next.js
+web/.next/
+web/out/
+web/node_modules/
+
+# Go
+cozmio-api/dist/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Environment files with secrets
+.env
+.env.*
+!.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+cozmio/*.log
+
+# Lock files (avoid conflicts)
+*.lock
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Large media files
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.pdf
+!.gitkeep
+
+# Cloudflare
+.cloudflare/
+.wrangler/
+
+# Cache
+.fastembed_cache/
+.playwright-mcp/
+.serena/
+.superpowers/
+.agents/
+.github/
+
+# Temporary
+*.txt
+!README.txt
+exec_test.txt
+ping_test.txt
+write_test.txt
+
+# BP/Business documents
+BP-*
+*商业*
+
+# Node at root
+node_modules/
